@@ -1537,7 +1537,7 @@ class MainActivity : Activity() {
         col.addView(titulo("Filmes e Séries"))
         col.addView(
             textoJanela(
-                "Cole o link da lista de filmes e séries (M3U). Na TV, abra \"● Filmes e Séries\" ao lado da TV ao vivo.",
+                "Cole o link da lista de filmes e séries (M3U). Na TV, eles aparecem nas abas Filmes e Séries da tela inicial, separados sozinhos.",
                 13f,
             ).apply { setPadding(dp(4), 0, 0, dp(4)) },
         )
