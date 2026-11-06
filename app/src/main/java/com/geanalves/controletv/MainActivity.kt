@@ -1560,7 +1560,7 @@ class MainActivity : Activity() {
             val seguro = link.replace("'", "'\\''")
             rodarAdmin("am broadcast -n com.geanalves.tvhome/.ConfigReceiver --es vod '$seguro'") { out ->
                 if (out?.contains("data=\"ok\"") == true) {
-                    toast(if (link.isBlank()) "Lista tirada da TV" else "Lista enviada! Abra Filmes e Séries na TV")
+                    toast(if (link.isBlank()) "Lista tirada da TV" else "Lista enviada! Veja nas abas Filmes e Séries da TV")
                     vodCampo.setText("")
                 } else {
                     toast("A TV não recebeu. Ela tem o Início TV atualizado?")
