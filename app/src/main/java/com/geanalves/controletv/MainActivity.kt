@@ -1486,6 +1486,53 @@ class MainActivity : Activity() {
             }
         })
 
+        // TV ao vivo (IPTV): o link da lista M3U vai para o Início TV
+        col.addView(titulo("TV ao vivo (IPTV)"))
+        col.addView(
+            textoJanela(
+                "Cole o link da sua lista de canais (M3U ou M3U8). Na TV, abra \"● TV ao vivo\" ao lado das abas.",
+                13f,
+            ).apply { setPadding(dp(4), 0, 0, dp(4)) },
+        )
+        val iptvBox = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = rounded(Cores.campo, 16)
+            setPadding(dp(14), dp(2), dp(4), dp(2))
+        }
+        val iptvCampo = EditText(this).apply {
+            hint = "https://…/lista.m3u"
+            textSize = 14f
+            setTextColor(Cores.tinta)
+            setHintTextColor(Cores.cinza)
+            background = null
+            isSingleLine = true
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+        }
+        fun mandarLista(link: String) {
+            val seguro = link.replace("'", "'\\''")
+            rodarAdmin("am broadcast -n com.geanalves.tvhome/.ConfigReceiver --es iptv '$seguro'") { out ->
+                if (out?.contains("data=\"ok\"") == true) {
+                    toast(if (link.isBlank()) "Lista tirada da TV" else "Lista enviada! Abra TV ao vivo na TV")
+                    iptvCampo.setText("")
+                } else {
+                    toast("A TV não recebeu. Ela tem o Início TV atualizado?")
+                }
+            }
+        }
+        iptvBox.addView(iptvCampo, LinearLayout.LayoutParams(0, -2, 1f))
+        iptvBox.addView(botao(R.drawable.ic_send, tamanho = 44, tamIcone = 20, fundo = Cores.tinta, corIcone = Cores.papel) {
+            val l = iptvCampo.text.toString().trim()
+            if (l.startsWith("http")) mandarLista(l) else toast("Cole um link que começa com http")
+        })
+        col.addView(iptvBox, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        col.addView(opcao("Canais abertos do Brasil", "Lista grátis e pública (iptv-org)") {
+            mandarLista("https://iptv-org.github.io/iptv/countries/br.m3u")
+        })
+        col.addView(opcao("Tirar a lista da TV") {
+            confirmar("Tirar a lista de canais da TV?") { mandarLista("") }
+        })
+
         col.addView(titulo("Segurança"))
         col.addView(opcao("Trocar PIN", "Crie um PIN novo para a Administração") { novoPin {} })
 
