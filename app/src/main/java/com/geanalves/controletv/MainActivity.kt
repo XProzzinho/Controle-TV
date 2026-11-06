@@ -230,6 +230,9 @@ class MainActivity : Activity() {
         col.addView(linhaBrilho(), LinearLayout.LayoutParams(-2, -2).apply { gravity = Gravity.CENTER_HORIZONTAL })
         col.addView(titulo("Digitar na TV"))
         col.addView(teclado())
+        col.addView(cabecalhoLembretes())
+        lembretesBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        col.addView(lembretesBox)
         col.addView(cabecalhoApps())
         appsGrid = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         col.addView(appsGrid)
@@ -437,6 +440,183 @@ class MainActivity : Activity() {
         return box
     }
 
+    // ---------- lembretes ----------
+
+    private lateinit var lembretesBox: LinearLayout
+    private var nomesPerfis = listOf("Perfil 1", "Perfil 2", "Perfil 3")
+
+    private fun cabecalhoLembretes(): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.BOTTOM
+        }
+        row.addView(titulo("Lembretes"), LinearLayout.LayoutParams(0, -2, 1f))
+        val add = botao(R.drawable.ic_add, tamanho = 40, tamIcone = 22, fundo = Cores.janela) { novoLembrete() }
+        add.elevation = dpf(2)
+        row.addView(add, LinearLayout.LayoutParams(dp(40), dp(40)).apply { bottomMargin = dp(8) })
+        return row
+    }
+
+    private fun quando(data: String): String {
+        val iso = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+        val c = java.util.Calendar.getInstance()
+        val hoje = iso.format(c.time)
+        c.add(java.util.Calendar.DAY_OF_YEAR, 1)
+        val amanha = iso.format(c.time)
+        return when (data) {
+            hoje -> "Hoje"
+            amanha -> "Amanhã"
+            else -> try {
+                java.text.SimpleDateFormat("EEE, d 'de' MMM", java.util.Locale("pt", "BR")).format(iso.parse(data)!!)
+            } catch (_: Throwable) {
+                data
+            }
+        }
+    }
+
+    /** Busca na TV os nomes dos perfis e os lembretes que estão valendo. */
+    private fun carregarLembretes() {
+        if (!::lembretesBox.isInitialized) return
+        tv.comando("am broadcast -n com.geanalves.tvhome/.ConfigReceiver --ez lembretes true") { out ->
+            val b64 = out?.let { Regex("data=\"([A-Za-z0-9+/=]+)\"").find(it)?.groupValues?.get(1) }
+            lembretesBox.removeAllViews()
+            if (b64 == null) {
+                lembretesBox.addView(textoJanela("Para os lembretes, a TV precisa do Início TV atualizado.", 13f))
+                return@comando
+            }
+            val linhas = String(android.util.Base64.decode(b64, android.util.Base64.DEFAULT)).lines()
+            nomesPerfis = linhas.firstOrNull()?.split('|')?.takeIf { it.size == 3 } ?: nomesPerfis
+            var algum = false
+            for (l in linhas.drop(1)) {
+                val p = l.split('|', limit = 4)
+                if (p.size < 4) continue
+                algum = true
+                val id = p[0]
+                val nome = nomesPerfis.getOrElse(p[1].toIntOrNull() ?: 0) { "" }
+                lembretesBox.addView(
+                    opcao(p[3], "$nome · ${quando(p[2])} · toque para apagar") {
+                        confirmar("Apagar o lembrete \"${p[3]}\"?") {
+                            tv.comando("am broadcast -n com.geanalves.tvhome/.ConfigReceiver --es apagar_lembrete $id") {
+                                carregarLembretes()
+                            }
+                        }
+                    },
+                )
+            }
+            if (!algum) lembretesBox.addView(textoJanela("Nenhum lembrete. Toque no + para criar.", 13f))
+        }
+    }
+
+    /** Novo lembrete: texto, perfil e até que dia aparece. */
+    private fun novoLembrete() {
+        if (tv.estado != Tv.Estado.CONECTADO) {
+            toast("Conecte na TV primeiro")
+            return
+        }
+        val (d, box) = janela()
+        box.addView(textoJanela("Novo lembrete", 22f, Cores.tinta, negrito = true))
+        val campo = EditText(this).apply {
+            hint = "Ex.: Pagar a conta de luz"
+            textSize = 16f
+            setTextColor(Cores.tinta)
+            setHintTextColor(Cores.cinza)
+            background = rounded(Cores.campo, 16)
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+            isSingleLine = true
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            filters = arrayOf(android.text.InputFilter.LengthFilter(60))
+        }
+        box.addView(campo, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+
+        // Escolhas em pílulas: a escolhida fica preta
+        fun grupo(titulo: String, opcoes: List<String>, inicial: Int, mudou: (Int) -> Unit): List<TextView> {
+            box.addView(textoJanela(titulo, 13f).apply { setPadding(0, dp(14), 0, dp(6)) })
+            val linha = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            val chips = ArrayList<TextView>()
+            fun pintar(sel: Int) {
+                chips.forEachIndexed { i, c ->
+                    c.background = rounded(if (i == sel) Cores.tinta else Cores.campo, 16)
+                    c.setTextColor(if (i == sel) Cores.papel else Cores.tinta)
+                }
+            }
+            opcoes.forEachIndexed { i, o ->
+                val c = TextView(this).apply {
+                    text = o
+                    textSize = 13f
+                    gravity = Gravity.CENTER
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    setPadding(dp(8), dp(10), dp(8), dp(10))
+                    setOnClickListener {
+                        vibrar(this)
+                        pintar(i)
+                        mudou(i)
+                    }
+                }
+                chips += c
+                linha.addView(c, LinearLayout.LayoutParams(0, -2, 1f).apply { if (i > 0) leftMargin = dp(6) })
+            }
+            pintar(inicial)
+            box.addView(linha, LinearLayout.LayoutParams(-1, -2))
+            return chips
+        }
+
+        var perfil = 0
+        grupo("Para quem", nomesPerfis.map { it.substringBefore(' ') }, 0) { perfil = it }
+
+        val iso = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+        val cal = java.util.Calendar.getInstance()
+        var data = iso.format(cal.time)
+        val chipsData = grupo("Até quando aparece", listOf("Hoje", "Amanhã", "Escolher dia"), 0) { }
+        chipsData[0].setOnClickListener {
+            data = iso.format(java.util.Calendar.getInstance().time)
+            chipsData.forEachIndexed { i, c -> c.background = rounded(if (i == 0) Cores.tinta else Cores.campo, 16); c.setTextColor(if (i == 0) Cores.papel else Cores.tinta) }
+        }
+        chipsData[1].setOnClickListener {
+            val c = java.util.Calendar.getInstance()
+            c.add(java.util.Calendar.DAY_OF_YEAR, 1)
+            data = iso.format(c.time)
+            chipsData.forEachIndexed { i, ch -> ch.background = rounded(if (i == 1) Cores.tinta else Cores.campo, 16); ch.setTextColor(if (i == 1) Cores.papel else Cores.tinta) }
+        }
+        chipsData[2].setOnClickListener {
+            val c = java.util.Calendar.getInstance()
+            android.app.DatePickerDialog(this, { _, y, m, dia ->
+                val esc = java.util.Calendar.getInstance()
+                esc.set(y, m, dia)
+                data = iso.format(esc.time)
+                chipsData[2].text = quando(data)
+                chipsData.forEachIndexed { i, ch -> ch.background = rounded(if (i == 2) Cores.tinta else Cores.campo, 16); ch.setTextColor(if (i == 2) Cores.papel else Cores.tinta) }
+            }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH)).apply {
+                datePicker.minDate = System.currentTimeMillis() - 1000
+            }.show()
+        }
+
+        val erro = textoJanela("", 13f, Cores.vermelho)
+        box.addView(erro)
+        box.addView(
+            opcao("Salvar na TV", escuro = true) {
+                val t = campo.text.toString().trim()
+                if (t.isEmpty()) {
+                    erro.text = "Escreva o lembrete primeiro."
+                    return@opcao
+                }
+                val seguro = t.replace("'", "'\\''")
+                tv.comando("am broadcast -n com.geanalves.tvhome/.ConfigReceiver --es lembrete '$seguro' --ei perfil $perfil --es data $data") { out ->
+                    if (out?.contains("data=\"ok\"") == true) {
+                        toast("Lembrete salvo na TV")
+                        d.dismiss()
+                        carregarLembretes()
+                    } else {
+                        erro.text = "A TV não recebeu. Ela tem o Início TV atualizado?"
+                    }
+                }
+            },
+        )
+        box.addView(opcao("Cancelar") { d.dismiss() })
+        d.show()
+        campo.requestFocus()
+    }
+
     private fun cabecalhoApps(): View {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -599,6 +779,7 @@ class MainActivity : Activity() {
                 statusDot.setColor(Cores.verde)
                 statusText.text = "Conectado · ${tv.ip}"
                 tv.brilho("") { n -> if (n != null) brilhoText.text = "Brilho $n%" }
+                carregarLembretes()
                 tv.pacotes { p ->
                     if (p != null) {
                         instalados = p
