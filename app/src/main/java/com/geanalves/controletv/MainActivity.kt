@@ -26,6 +26,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import android.text.method.ScrollingMovementMethod
 import java.net.Inet4Address
 
 /** Controle remoto da TV pelo celular, com as cores do Início TV. */
@@ -228,6 +229,9 @@ class MainActivity : Activity() {
         col.addView(cabecalhoApps())
         appsGrid = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         col.addView(appsGrid)
+        // Administração: comandos para modificar a TV (igual ao Bugjaeger)
+        col.addView(espaco(h = 24))
+        col.addView(botaoAdmin())
         return root
     }
 
@@ -701,6 +705,317 @@ class MainActivity : Activity() {
         )
         box.addView(opcao("Cancelar") { d.dismiss() })
         d.show()
+    }
+
+    // ---------- administração ----------
+
+    private fun botaoAdmin(): View {
+        val p = pilula().apply {
+            setPadding(dp(18), dp(10), dp(10), dp(10))
+            isClickable = true
+            setOnClickListener {
+                vibrar(this)
+                abrirAdmin()
+            }
+        }
+        val txt = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        txt.addView(
+            TextView(this).apply {
+                text = "Administração"
+                textSize = 17f
+                setTextColor(Cores.tinta)
+                typeface = Typeface.DEFAULT_BOLD
+            },
+        )
+        txt.addView(
+            TextView(this).apply {
+                text = "Comandos para modificar a TV"
+                textSize = 12f
+                setTextColor(Cores.cinza)
+            },
+        )
+        p.addView(txt, LinearLayout.LayoutParams(0, -2, 1f))
+        p.addView(
+            FrameLayout(this).apply {
+                background = oval(Cores.tinta)
+                addView(
+                    ImageView(this@MainActivity).apply {
+                        setImageResource(R.drawable.ic_right)
+                        setColorFilter(Cores.papel)
+                    },
+                    FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER),
+                )
+            },
+            LinearLayout.LayoutParams(dp(40), dp(40)),
+        )
+        return p
+    }
+
+    private lateinit var saidaAdmin: TextView
+    private var scrollAdmin: ScrollView? = null
+
+    /** Mostra o comando e a resposta da TV na caixa preta do terminal. */
+    private fun rodarAdmin(cmd: String, depois: ((String?) -> Unit)? = null) {
+        if (tv.estado != Tv.Estado.CONECTADO && tv.ip == null) {
+            toast("Conecte na TV primeiro")
+            return
+        }
+        saidaAdmin.append("\n$ $cmd\n")
+        tv.comando(cmd) { out ->
+            val r = out?.trimEnd()
+            saidaAdmin.append(if (r == null) "(a TV não respondeu)\n" else if (r.isEmpty()) "(feito)\n" else "$r\n")
+            saidaAdmin.post {
+                val layout = saidaAdmin.layout ?: return@post
+                val y = layout.getLineTop(saidaAdmin.lineCount) - saidaAdmin.height
+                if (y > 0) saidaAdmin.scrollTo(0, y)
+            }
+            depois?.invoke(out)
+        }
+    }
+
+    private fun abrirAdmin() {
+        if (tv.ip == null) {
+            toast("Conecte na TV primeiro")
+            escolherTv()
+            return
+        }
+        val d = Dialog(this, android.R.style.Theme_Material_Light_NoActionBar)
+        val scroll = ScrollView(this).apply {
+            isVerticalScrollBarEnabled = false
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Cores.fundoTopo, Cores.fundoBase),
+            )
+        }
+        scrollAdmin = scroll
+        val col = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(36), dp(20), dp(32))
+        }
+        scroll.addView(col)
+        d.setContentView(scroll)
+
+        // Topo: voltar + título
+        val topo = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val voltar = botao(R.drawable.ic_back, tamanho = 44, tamIcone = 22, fundo = Cores.janela) { d.dismiss() }
+        voltar.elevation = dpf(2)
+        topo.addView(voltar)
+        topo.addView(
+            TextView(this).apply {
+                text = "Administração"
+                textSize = 26f
+                setTextColor(Cores.tinta)
+                typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+                setPadding(dp(14), 0, 0, 0)
+            },
+        )
+        col.addView(topo)
+        col.addView(
+            textoJanela("Conectado em ${tv.ip}. Desativar e remover apps dá para desfazer aqui mesmo.", 13f)
+                .apply { setPadding(dp(4), dp(10), 0, 0) },
+        )
+
+        // Terminal
+        col.addView(titulo("Terminal"))
+        val term = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(0xFF1C1C1E.toInt(), 20)
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+        }
+        saidaAdmin = TextView(this).apply {
+            text = "Pronto. Digite um comando (ex.: pm list packages) ou use os botões abaixo."
+            textSize = 12f
+            setTextColor(0xFFE5E5EA.toInt())
+            typeface = Typeface.MONOSPACE
+            setTextIsSelectable(true)
+            movementMethod = ScrollingMovementMethod()
+            isVerticalScrollBarEnabled = true
+        }
+        term.addView(saidaAdmin, LinearLayout.LayoutParams(-1, dp(220)))
+        val linhaCmd = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = rounded(0xFF2C2C2E.toInt(), 14)
+            setPadding(dp(12), 0, dp(4), 0)
+        }
+        val campo = EditText(this).apply {
+            hint = "adb shell …"
+            textSize = 14f
+            typeface = Typeface.MONOSPACE
+            setTextColor(Color.WHITE)
+            setHintTextColor(0xFF8E8E93.toInt())
+            background = null
+            isSingleLine = true
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+            imeOptions = EditorInfo.IME_ACTION_SEND
+        }
+        fun enviar() {
+            val c = campo.text.toString().trim().removePrefix("adb shell ").trim()
+            if (c.isEmpty()) return
+            rodarAdmin(c)
+            campo.setText("")
+        }
+        campo.setOnEditorActionListener { _, id, _ ->
+            if (id == EditorInfo.IME_ACTION_SEND) {
+                enviar()
+                true
+            } else {
+                false
+            }
+        }
+        linhaCmd.addView(campo, LinearLayout.LayoutParams(0, -2, 1f))
+        linhaCmd.addView(botao(R.drawable.ic_send, tamanho = 44, tamIcone = 20, corIcone = Color.WHITE) { enviar() })
+        term.addView(linhaCmd, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        col.addView(term)
+
+        // Apps da TV
+        col.addView(titulo("Apps da TV"))
+        col.addView(opcao("Gerenciar apps", "Desativar, reativar, remover ou abrir qualquer app") { gerenciarApps(false) })
+        col.addView(opcao("Apps desativados", "Ver e reativar o que foi desligado") { gerenciarApps(true) })
+        col.addView(opcao("Restaurar app removido", "Trazer de volta um app que você removeu") { restaurarApps() })
+
+        // Comandos prontos
+        col.addView(titulo("Comandos prontos"))
+        col.addView(opcao("Início TV como tela inicial", "Deixa o seu launcher como principal") {
+            rodarAdmin("cmd package set-home-activity com.geanalves.tvhome/.MainActivity")
+        })
+        col.addView(opcao("Desligar Google Assistente", "Para de abrir o Assistente no botão do controle") {
+            confirmar("Desligar o Google Assistente?") { rodarAdmin("pm disable-user --user 0 com.google.android.katniss") }
+        })
+        col.addView(opcao("Religar Google Assistente") { rodarAdmin("pm enable com.google.android.katniss") })
+        col.addView(opcao("Animações rápidas", "A TV fica mais esperta (0.5x)") {
+            rodarAdmin("settings put global window_animation_scale 0.5; settings put global transition_animation_scale 0.5; settings put global animator_duration_scale 0.5")
+        })
+        col.addView(opcao("Animações normais", "Volta ao padrão (1x)") {
+            rodarAdmin("settings put global window_animation_scale 1; settings put global transition_animation_scale 1; settings put global animator_duration_scale 1")
+        })
+        col.addView(opcao("Liberar memória", "Fecha os apps abertos em segundo plano") { rodarAdmin("am kill-all") })
+        col.addView(opcao("Informações da TV", "Modelo, Android, memória e espaço") {
+            rodarAdmin("echo Modelo: \$(getprop ro.product.manufacturer) \$(getprop ro.product.model); echo Android: \$(getprop ro.build.version.release); grep -E 'MemTotal|MemAvailable' /proc/meminfo; df -h /data | tail -1")
+        })
+        col.addView(opcao("Ver tela inicial atual") { rodarAdmin("cmd package resolve-activity -a android.intent.action.MAIN -c android.intent.category.HOME | grep -m1 packageName") })
+        col.addView(opcao("Reiniciar a TV", "Desliga e liga de novo") {
+            confirmar("Reiniciar a TV agora?") { rodarAdmin("reboot") }
+        })
+
+        d.show()
+    }
+
+    /** Lista de apps da TV (todos ou só os desativados) para mexer em cada um. */
+    private fun gerenciarApps(soDesativados: Boolean) {
+        val (d, box) = janela()
+        box.addView(textoJanela(if (soDesativados) "Apps desativados" else "Gerenciar apps", 22f, Cores.tinta, negrito = true))
+        val aviso = textoJanela("Buscando os apps da TV…")
+        box.addView(aviso)
+        d.show()
+        tv.comando("echo D; pm list packages -d; echo T; pm list packages -3; echo A; pm list packages") { out ->
+            if (out == null) {
+                aviso.text = "A TV não respondeu."
+                return@comando
+            }
+            val des = HashSet<String>()
+            val terceiros = HashSet<String>()
+            val todos = ArrayList<String>()
+            var parte = ""
+            for (l in out.lines()) {
+                val t = l.trim()
+                if (t == "D" || t == "T" || t == "A") {
+                    parte = t
+                    continue
+                }
+                val pkg = t.removePrefix("package:")
+                if (pkg.isBlank() || !t.startsWith("package:")) continue
+                when (parte) {
+                    "D" -> des += pkg
+                    "T" -> terceiros += pkg
+                    "A" -> todos += pkg
+                }
+            }
+            val lista = (if (soDesativados) des.toList() else todos)
+                .sortedWith(compareBy<String>({ it !in terceiros }, { it }))
+            aviso.text = when {
+                lista.isEmpty() && soDesativados -> "Nenhum app desativado."
+                soDesativados -> "Toque para reativar ou remover:"
+                else -> "${lista.size} apps. Primeiro os que você instalou, depois os do sistema. Toque em um:"
+            }
+            for (pkg in lista) {
+                val sub = buildString {
+                    append(pkg)
+                    if (pkg in des) append(" · desativado")
+                    if (pkg !in terceiros) append(" · sistema")
+                }
+                box.addView(opcao(Apps.nomeDoPacote(pkg), sub) { acoesApp(pkg, pkg in des) { d.dismiss() } })
+            }
+        }
+    }
+
+    private fun acoesApp(pkg: String, desativado: Boolean, fechar: () -> Unit) {
+        val (d, box) = janela()
+        box.addView(textoJanela(Apps.nomeDoPacote(pkg), 22f, Cores.tinta, negrito = true))
+        box.addView(textoJanela(pkg, 12f))
+        fun acao(nome: String, sub: String, cmd: String, perguntar: String? = null) {
+            box.addView(
+                opcao(nome, sub) {
+                    val vai = {
+                        rodarAdmin(cmd)
+                        d.dismiss()
+                        fechar()
+                    }
+                    if (perguntar != null) confirmar(perguntar) { vai() } else vai()
+                },
+            )
+        }
+        acao("Abrir na TV", "Abre o app agora", "monkey -p $pkg -c android.intent.category.LEANBACK_LAUNCHER 1 || monkey -p $pkg 1")
+        if (desativado) {
+            acao("Reativar", "Liga o app de novo", "pm enable $pkg")
+        } else {
+            acao("Desativar", "Some da TV, mas dá para reativar", "pm disable-user --user 0 $pkg", "Desativar ${Apps.nomeDoPacote(pkg)}?")
+        }
+        acao("Remover", "Tira da TV (dá para restaurar depois)", "pm uninstall -k --user 0 $pkg", "Remover ${Apps.nomeDoPacote(pkg)}?")
+        acao("Limpar dados", "Apaga login e configurações do app", "pm clear $pkg", "Apagar os dados de ${Apps.nomeDoPacote(pkg)}?")
+        acao("Forçar parada", "Fecha o app", "am force-stop $pkg")
+        box.addView(opcao("Cancelar") { d.dismiss() })
+        d.show()
+    }
+
+    /** Apps removidos com "Remover" continuam guardados na TV e podem voltar. */
+    private fun restaurarApps() {
+        val (d, box) = janela()
+        box.addView(textoJanela("Restaurar app removido", 22f, Cores.tinta, negrito = true))
+        val aviso = textoJanela("Buscando…")
+        box.addView(aviso)
+        d.show()
+        tv.comando("echo U; pm list packages -u; echo A; pm list packages") { out ->
+            if (out == null) {
+                aviso.text = "A TV não respondeu."
+                return@comando
+            }
+            val u = HashSet<String>()
+            val a = HashSet<String>()
+            var parte = ""
+            for (l in out.lines()) {
+                val t = l.trim()
+                if (t == "U" || t == "A") {
+                    parte = t
+                    continue
+                }
+                if (!t.startsWith("package:")) continue
+                if (parte == "U") u += t.removePrefix("package:") else a += t.removePrefix("package:")
+            }
+            val removidos = (u - a).sorted()
+            aviso.text = if (removidos.isEmpty()) "Nenhum app removido." else "Toque para trazer de volta:"
+            for (pkg in removidos) {
+                box.addView(
+                    opcao(Apps.nomeDoPacote(pkg), pkg) {
+                        rodarAdmin("cmd package install-existing $pkg")
+                        d.dismiss()
+                    },
+                )
+            }
+        }
     }
 
     // ---------- modo escuro ----------

@@ -101,6 +101,9 @@ class Tv(private val ctx: Context) {
 
     fun tecla(codigo: Int) = rodar("input keyevent $codigo")
 
+    /** Comando livre (terminal da Administração). Devolve o que a TV respondeu. */
+    fun comando(cmd: String, cb: (String?) -> Unit) = rodar(cmd, cb)
+
     /** Digita na TV. O comando da TV não aceita acentos, então eles são tirados. */
     fun digitar(texto: String) {
         val semAcento = Normalizer.normalize(texto, Normalizer.Form.NFD)
