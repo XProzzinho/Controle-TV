@@ -219,7 +219,9 @@ class MainActivity : Activity() {
 
         col.addView(topo())
         col.addView(espaco(h = 28))
-        col.addView(direcional(), LinearLayout.LayoutParams(-2, -2).apply { gravity = Gravity.CENTER_HORIZONTAL })
+        // O círculo precisa do tamanho certo, senão o OK cobre as setas
+        val lado = (resources.displayMetrics.widthPixels - dp(40)).coerceAtMost(dp(300))
+        col.addView(direcional(), LinearLayout.LayoutParams(lado, lado).apply { gravity = Gravity.CENTER_HORIZONTAL })
         col.addView(espaco(h = 24))
         col.addView(linhaNavegacao(), LinearLayout.LayoutParams(-2, -2).apply { gravity = Gravity.CENTER_HORIZONTAL })
         col.addView(espaco(h = 16))
@@ -818,7 +820,109 @@ class MainActivity : Activity() {
         }
     }
 
+    // ---------- PIN da Administração ----------
+
+    private fun hashPin(pin: String): String =
+        java.security.MessageDigest.getInstance("SHA-256")
+            .digest(("controletv:" + pin).toByteArray())
+            .joinToString("") { "%02x".format(it) }
+
+    private fun campoPin(dica: String): EditText =
+        EditText(this).apply {
+            hint = dica
+            textSize = 22f
+            setTextColor(Cores.tinta)
+            setHintTextColor(Cores.cinza)
+            gravity = Gravity.CENTER
+            letterSpacing = 0.3f
+            background = rounded(Cores.campo, 16)
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+            isSingleLine = true
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            filters = arrayOf(android.text.InputFilter.LengthFilter(8))
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) }
+        }
+
+    /** Primeira vez: cria o PIN (digita duas vezes). Depois: pede o PIN para entrar. */
+    private fun pedirPin(liberado: () -> Unit) {
+        val salvo = prefs.pin
+        if (salvo == null) {
+            novoPin(liberado)
+            return
+        }
+        val (d, box) = janela()
+        box.addView(textoJanela("Administração", 22f, Cores.tinta, negrito = true))
+        box.addView(textoJanela("Digite o seu PIN para entrar."))
+        val campo = campoPin("PIN")
+        box.addView(campo)
+        val erro = textoJanela("", 13f, Cores.vermelho)
+        box.addView(erro)
+        fun conferir() {
+            if (hashPin(campo.text.toString()) == salvo) {
+                d.dismiss()
+                liberado()
+            } else {
+                erro.text = "PIN errado. Tente de novo."
+                campo.setText("")
+            }
+        }
+        campo.imeOptions = EditorInfo.IME_ACTION_DONE
+        campo.setOnEditorActionListener { _, _, _ ->
+            conferir()
+            true
+        }
+        box.addView(opcao("Entrar", escuro = true) { conferir() })
+        box.addView(opcao("Cancelar") { d.dismiss() })
+        d.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
+        d.show()
+        campo.requestFocus()
+    }
+
+    /** Novo PIN: digita duas vezes e confirma. */
+    private fun novoPin(pronto: () -> Unit) {
+        val (d, box) = janela()
+        box.addView(textoJanela("Novo PIN", 22f, Cores.tinta, negrito = true))
+        box.addView(textoJanela("Crie um PIN de 4 a 8 números. Só quem souber o PIN entra na Administração."))
+        val c1 = campoPin("Novo PIN")
+        val c2 = campoPin("Confirme o PIN")
+        box.addView(c1)
+        box.addView(c2)
+        val erro = textoJanela("", 13f, Cores.vermelho)
+        box.addView(erro)
+        fun salvar() {
+            val a = c1.text.toString()
+            val b = c2.text.toString()
+            when {
+                a.length < 4 -> erro.text = "O PIN precisa ter pelo menos 4 números."
+                a != b -> {
+                    erro.text = "Os dois PIN não são iguais. Digite de novo."
+                    c2.setText("")
+                }
+                else -> {
+                    prefs.pin = hashPin(a)
+                    toast("PIN salvo")
+                    d.dismiss()
+                    pronto()
+                }
+            }
+        }
+        c2.imeOptions = EditorInfo.IME_ACTION_DONE
+        c2.setOnEditorActionListener { _, _, _ ->
+            salvar()
+            true
+        }
+        box.addView(opcao("Confirmar", escuro = true) { salvar() })
+        box.addView(opcao("Cancelar") { d.dismiss() })
+        d.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
+        d.show()
+        c1.requestFocus()
+    }
+
     private fun abrirAdmin() {
+        pedirPin { abrirAdminLiberado() }
+    }
+
+    private fun abrirAdminLiberado() {
         if (tv.ip == null) {
             toast("Conecte na TV primeiro")
             escolherTv()
@@ -992,6 +1096,9 @@ class MainActivity : Activity() {
         col.addView(opcao("Reiniciar a TV", "Desliga e liga de novo") {
             confirmar("Reiniciar a TV agora?") { rodarAdmin("reboot") }
         })
+
+        col.addView(titulo("Segurança"))
+        col.addView(opcao("Trocar PIN", "Crie um PIN novo para a Administração") { novoPin {} })
 
         d.show()
     }

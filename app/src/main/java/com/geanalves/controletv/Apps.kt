@@ -46,6 +46,11 @@ class Prefs(ctx: Context) {
         get() = sp.getString("ip", null)
         set(v) = sp.edit().putString("ip", v).apply()
 
+    /** PIN da Administração (guardado embaralhado, nunca o número). */
+    var pin: String?
+        get() = sp.getString("pin", null)
+        set(v) = sp.edit().putString("pin", v).apply()
+
     var escuro: Boolean
         get() = sp.getBoolean("escuro", false)
         set(v) = sp.edit().putBoolean("escuro", v).apply()
