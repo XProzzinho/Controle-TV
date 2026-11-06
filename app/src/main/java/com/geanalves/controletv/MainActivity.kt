@@ -225,9 +225,9 @@ class MainActivity : Activity() {
         col.addView(espaco(h = 24))
         col.addView(linhaNavegacao(), LinearLayout.LayoutParams(-2, -2).apply { gravity = Gravity.CENTER_HORIZONTAL })
         col.addView(espaco(h = 16))
-        col.addView(linhaVolume(), LinearLayout.LayoutParams(-2, -2).apply { gravity = Gravity.CENTER_HORIZONTAL })
+        col.addView(linhaVolume(), LinearLayout.LayoutParams(-1, -2))
         col.addView(espaco(h = 16))
-        col.addView(linhaBrilho(), LinearLayout.LayoutParams(-2, -2).apply { gravity = Gravity.CENTER_HORIZONTAL })
+        col.addView(linhaBrilho(), LinearLayout.LayoutParams(-1, -2))
         col.addView(titulo("Digitar na TV"))
         col.addView(teclado())
         col.addView(cabecalhoLembretes())
@@ -285,76 +285,102 @@ class MainActivity : Activity() {
         return row
     }
 
-    /** Círculo grande com as setas e o OK no meio. */
+    /** Anel fino com as setas e o OK grande no meio (prévia 4). */
     private fun direcional(): View {
         val lado = (resources.displayMetrics.widthPixels - dp(40)).coerceAtMost(dp(300))
+        val anel = dp(62)
         val pad = FrameLayout(this).apply {
-            background = oval(Cores.janela)
-            elevation = dpf(4)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.TRANSPARENT)
+                setStroke(anel, Cores.janela)
+            }
             layoutParams = LinearLayout.LayoutParams(lado, lado)
         }
         fun seta(icone: Int, tecla: Int, g: Int) {
-            val b = botao(icone, tamanho = 76, tamIcone = 36, repetir = true) { tv.tecla(tecla) }
-            val lp = FrameLayout.LayoutParams(dp(76), dp(76), g)
-            lp.setMargins(dp(10), dp(10), dp(10), dp(10))
-            pad.addView(b, lp)
+            val b = botao(icone, tamanho = anel, tamIcone = 30, repetir = true) { tv.tecla(tecla) }
+            pad.addView(b, FrameLayout.LayoutParams(anel, anel, g))
         }
         seta(R.drawable.ic_up, Tv.CIMA, Gravity.TOP or Gravity.CENTER_HORIZONTAL)
         seta(R.drawable.ic_down, Tv.BAIXO, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
         seta(R.drawable.ic_left, Tv.ESQUERDA, Gravity.START or Gravity.CENTER_VERTICAL)
         seta(R.drawable.ic_right, Tv.DIREITA, Gravity.END or Gravity.CENTER_VERTICAL)
-        val ok = botao(null, texto = "OK", tamanho = 116, fundo = Cores.campo) { tv.tecla(Tv.OK) }
-        pad.addView(ok, FrameLayout.LayoutParams(dp(116), dp(116), Gravity.CENTER))
+        // OK grande e cheio: preto no claro, branco no escuro
+        val okLado = lado - anel * 2 - dp(18)
+        val ok = botao(null, texto = "OK", tamanho = okLado, fundo = Cores.tinta, corIcone = Cores.papel) { tv.tecla(Tv.OK) }
+        (ok.getChildAt(0) as? TextView)?.textSize = 24f
+        pad.addView(ok, FrameLayout.LayoutParams(okLado, okLado, Gravity.CENTER))
         return pad
     }
 
-    /** Voltar, Início, Menu e Play/Pause, com o nome embaixo. */
+    /** Voltar, Início, Menu, Play e Mudo: ícones soltos, sem barra. */
     private fun linhaNavegacao(): View {
-        val p = pilula()
-        fun item(icone: Int, nome: String, tecla: Int) {
-            val c = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER_HORIZONTAL
-                setPadding(dp(4), dp(2), dp(4), dp(4))
-            }
-            c.addView(botao(icone, tamanho = 54) { tv.tecla(tecla) })
-            c.addView(
-                TextView(this).apply {
-                    text = nome
-                    textSize = 11f
-                    setTextColor(Cores.cinza)
-                    gravity = Gravity.CENTER
-                },
-            )
-            p.addView(c)
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
         }
-        item(R.drawable.ic_back, "Voltar", Tv.VOLTAR)
-        item(R.drawable.ic_home, "Início", Tv.INICIO)
-        item(R.drawable.ic_menu, "Menu", Tv.MENU)
-        item(R.drawable.ic_play, "Play", Tv.PLAY_PAUSE)
-        return p
+        for ((icone, tecla) in listOf(
+            R.drawable.ic_back to Tv.VOLTAR,
+            R.drawable.ic_home to Tv.INICIO,
+            R.drawable.ic_menu to Tv.MENU,
+            R.drawable.ic_play to Tv.PLAY_PAUSE,
+            R.drawable.ic_mute to Tv.MUDO,
+        )) {
+            row.addView(botao(icone, tamanho = 56, tamIcone = 26) { tv.tecla(tecla) }, LinearLayout.LayoutParams(dp(56), dp(56)).apply { leftMargin = dp(4); rightMargin = dp(4) })
+        }
+        return row
     }
 
-    /** Volume: menos, mudo e mais (segurar repete). */
-    private fun linhaVolume(): View {
-        val p = pilula()
-        p.addView(botao(R.drawable.ic_vol_down, tamanho = 60, repetir = true) { tv.tecla(Tv.VOL_MENOS) })
-        p.addView(
-            TextView(this).apply {
-                text = "Volume"
-                textSize = 15f
-                setTextColor(Cores.cinza)
-                gravity = Gravity.CENTER
-                setPadding(dp(14), 0, dp(14), 0)
-            },
-        )
-        p.addView(botao(R.drawable.ic_mute, tamanho = 60, fundo = Cores.campo) { tv.tecla(Tv.MUDO) })
-        p.addView(espaco(w = 14))
-        p.addView(botao(R.drawable.ic_vol_up, tamanho = 60, repetir = true) { tv.tecla(Tv.VOL_MAIS) })
-        return p
+    /** Trilha de arrastar (volume e brilho): mostra o nível e muda ao soltar o dedo. */
+    @SuppressLint("ViewConstructor")
+    private inner class Trilha(val aoSoltar: (Float) -> Unit) : View(this@MainActivity) {
+        var valor = -1f
+            set(v) {
+                field = v
+                invalidate()
+            }
+        private val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+
+        override fun onDraw(c: android.graphics.Canvas) {
+            val h = dpf(6)
+            val y = height / 2f
+            val r = dpf(9)
+            val x0 = r
+            val x1 = width - r
+            p.color = Cores.campo
+            c.drawRoundRect(x0, y - h / 2, x1, y + h / 2, h, h, p)
+            if (valor < 0f) return
+            val x = x0 + (x1 - x0) * valor.coerceIn(0f, 1f)
+            p.color = Cores.tinta
+            c.drawRoundRect(x0, y - h / 2, x, y + h / 2, h, h, p)
+            c.drawCircle(x, y, r, p)
+        }
+
+        @SuppressLint("ClickableViewAccessibility")
+        override fun onTouchEvent(e: MotionEvent): Boolean {
+            val r = dpf(9)
+            val f = ((e.x - r) / (width - 2 * r)).coerceIn(0f, 1f)
+            when (e.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    parent.requestDisallowInterceptTouchEvent(true)
+                    valor = f
+                }
+                MotionEvent.ACTION_MOVE -> valor = f
+                MotionEvent.ACTION_UP -> {
+                    valor = f
+                    vibrar(this)
+                    aoSoltar(f)
+                }
+            }
+            return true
+        }
     }
 
     private lateinit var brilhoText: TextView
+    private lateinit var trilhaBrilho: Trilha
+    private lateinit var volumeText: TextView
+    private lateinit var trilhaVolume: Trilha
+    private var volumeMax = 15
 
     private fun mostrarBrilho(n: Int?) {
         if (!::brilhoText.isInitialized) return
@@ -363,37 +389,86 @@ class MainActivity : Activity() {
             brilhoText.text = "Brilho"
         } else {
             brilhoText.text = "Brilho $n%"
+            trilhaBrilho.valor = (n - 5) / 95f
         }
     }
 
-    /** Brilho: menos, dormir (bem baixinho) e mais. Tocar no texto volta ao normal. */
-    private fun linhaBrilho(): View {
-        val p = pilula()
-        p.addView(botao(R.drawable.ic_claro, tamanho = 60, tamIcone = 17, repetir = true) {
-            tv.brilho("--ei passo -10") { mostrarBrilho(it) }
-        })
-        brilhoText = TextView(this).apply {
-            text = "Brilho"
-            textSize = 15f
+    private fun mostrarVolume(v: Pair<Int, Int>?) {
+        if (!::volumeText.isInitialized) return
+        if (v == null) {
+            volumeText.text = "Volume"
+            return
+        }
+        volumeMax = v.second.coerceAtLeast(1)
+        volumeText.text = "Volume ${v.first}"
+        trilhaVolume.valor = v.first / volumeMax.toFloat()
+    }
+
+    /** Barra branca: − , nome + trilha, + e um botão especial redondo. */
+    private fun barraNivel(
+        menos: Int,
+        mais: Int,
+        especial: Int,
+        rotulo: TextView,
+        trilha: Trilha,
+        aoMenos: () -> Unit,
+        aoMais: () -> Unit,
+        aoEspecial: () -> Unit,
+    ): View {
+        val p = pilula().apply { setPadding(dp(6), dp(6), dp(8), dp(6)) }
+        p.addView(botao(menos, tamanho = 52, tamIcone = 22, repetir = true) { aoMenos() })
+        val meio = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(4), 0, dp(4), 0)
+        }
+        rotulo.apply {
+            textSize = 12f
             setTextColor(Cores.cinza)
             gravity = Gravity.CENTER
-            minWidth = dp(92)
-            setPadding(dp(6), 0, dp(6), 0)
+        }
+        meio.addView(rotulo, LinearLayout.LayoutParams(-1, -2))
+        meio.addView(trilha, LinearLayout.LayoutParams(-1, dp(26)))
+        p.addView(meio, LinearLayout.LayoutParams(0, -2, 1f))
+        p.addView(botao(mais, tamanho = 52, tamIcone = 24, repetir = true) { aoMais() })
+        p.addView(espaco(w = 6))
+        p.addView(botao(especial, tamanho = 48, tamIcone = 22, fundo = Cores.campo) { aoEspecial() })
+        return p
+    }
+
+    private fun linhaVolume(): View {
+        volumeText = TextView(this).apply { text = "Volume" }
+        trilhaVolume = Trilha { f -> tv.volume(Math.round(f * volumeMax)) { mostrarVolume(it) } }
+        return barraNivel(
+            R.drawable.ic_vol_down, R.drawable.ic_vol_up, R.drawable.ic_mute, volumeText, trilhaVolume,
+            aoMenos = { tv.tecla(Tv.VOL_MENOS); atualizarVolumeDepois() },
+            aoMais = { tv.tecla(Tv.VOL_MAIS); atualizarVolumeDepois() },
+            aoEspecial = { tv.tecla(Tv.MUDO) },
+        )
+    }
+
+    private val lerVolume = Runnable { tv.volume(null) { mostrarVolume(it) } }
+
+    private fun atualizarVolumeDepois() {
+        handler.removeCallbacks(lerVolume)
+        handler.postDelayed(lerVolume, 600)
+    }
+
+    /** Brilho: − , trilha, + e a lua (dormir: bem baixinho). Tocar no texto volta ao normal. */
+    private fun linhaBrilho(): View {
+        brilhoText = TextView(this).apply {
+            text = "Brilho"
             setOnClickListener {
                 vibrar(this)
                 tv.brilho("--ei nivel 100") { mostrarBrilho(it) }
             }
         }
-        p.addView(brilhoText)
-        // Dormir: brilho bem baixinho de uma vez
-        p.addView(botao(R.drawable.ic_lua, tamanho = 60, tamIcone = 22, fundo = Cores.campo) {
-            tv.brilho("--ei nivel 10") { mostrarBrilho(it) }
-        })
-        p.addView(espaco(w = 14))
-        p.addView(botao(R.drawable.ic_claro, tamanho = 60, tamIcone = 27, repetir = true) {
-            tv.brilho("--ei passo 10") { mostrarBrilho(it) }
-        })
-        return p
+        trilhaBrilho = Trilha { f -> tv.brilho("--ei nivel ${5 + Math.round(f * 95)}") { mostrarBrilho(it) } }
+        return barraNivel(
+            R.drawable.ic_claro, R.drawable.ic_claro, R.drawable.ic_lua, brilhoText, trilhaBrilho,
+            aoMenos = { tv.brilho("--ei passo -10") { mostrarBrilho(it) } },
+            aoMais = { tv.brilho("--ei passo 10") { mostrarBrilho(it) } },
+            aoEspecial = { tv.brilho("--ei nivel 10") { mostrarBrilho(it) } },
+        )
     }
 
     /** Campo para digitar no celular e mandar o texto para a TV. */
@@ -778,7 +853,8 @@ class MainActivity : Activity() {
             Tv.Estado.CONECTADO -> {
                 statusDot.setColor(Cores.verde)
                 statusText.text = "Conectado · ${tv.ip}"
-                tv.brilho("") { n -> if (n != null) brilhoText.text = "Brilho $n%" }
+                tv.brilho("") { n -> if (n != null) mostrarBrilho(n) }
+                tv.volume(null) { mostrarVolume(it) }
                 carregarLembretes()
                 tv.pacotes { p ->
                     if (p != null) {

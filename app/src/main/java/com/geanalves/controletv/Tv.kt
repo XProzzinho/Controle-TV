@@ -180,6 +180,22 @@ class Tv(private val ctx: Context) {
         }
     }
 
+    /**
+     * Volume da TV: [nivel] = null só consulta; senão muda para esse número.
+     * Devolve (atual, máximo) ou null se a TV não informar.
+     */
+    fun volume(nivel: Int?, cb: (Pair<Int, Int>?) -> Unit) {
+        val set = if (nivel != null) {
+            "(cmd media_session volume --stream 3 --set $nivel || media volume --stream 3 --set $nivel) >/dev/null 2>&1; "
+        } else {
+            ""
+        }
+        rodar(set + "(cmd media_session volume --stream 3 --get || media volume --stream 3 --get) 2>/dev/null") { out ->
+            val m = out?.let { Regex("volume is (\\d+) in range \\[(\\d+)\\.\\.(\\d+)\\]").find(it) }
+            cb(m?.let { it.groupValues[1].toInt() to it.groupValues[3].toInt() })
+        }
+    }
+
     /** Comando livre (terminal da Administração). Devolve o que a TV respondeu. */
     fun comando(cmd: String, cb: (String?) -> Unit) = rodar(cmd, cb)
 
