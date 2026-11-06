@@ -924,8 +924,17 @@ class MainActivity : Activity() {
 
         // Comandos prontos
         col.addView(titulo("Comandos prontos"))
-        col.addView(opcao("Início TV como tela inicial", "Deixa o seu launcher como principal") {
-            rodarAdmin("cmd package set-home-activity com.geanalves.tvhome/.MainActivity")
+        col.addView(opcao("Fixar Início TV", "Tela inicial principal, mesmo depois de reiniciar") {
+            confirmar("Fixar o Início TV como tela inicial?") {
+                rodarAdmin(
+                    "cmd package set-home-activity com.geanalves.tvhome/.MainActivity; " +
+                        "pm disable-user --user 0 com.google.android.tvlauncher; " +
+                        "cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -1",
+                )
+            }
+        })
+        col.addView(opcao("Voltar tela inicial original", "Religa o launcher da TV") {
+            rodarAdmin("pm enable com.google.android.tvlauncher")
         })
         col.addView(opcao("Desligar Google Assistente", "Para de abrir o Assistente no botão do controle") {
             confirmar("Desligar o Google Assistente?") { rodarAdmin("pm disable-user --user 0 com.google.android.katniss") }
@@ -941,7 +950,7 @@ class MainActivity : Activity() {
         col.addView(opcao("Informações da TV", "Modelo, Android, memória e espaço") {
             rodarAdmin("echo Modelo: \$(getprop ro.product.manufacturer) \$(getprop ro.product.model); echo Android: \$(getprop ro.build.version.release); grep -E 'MemTotal|MemAvailable' /proc/meminfo; df -h /data | tail -1")
         })
-        col.addView(opcao("Ver tela inicial atual") { rodarAdmin("cmd package resolve-activity -a android.intent.action.MAIN -c android.intent.category.HOME | grep -m1 packageName") })
+        col.addView(opcao("Ver tela inicial atual") { rodarAdmin("cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -1") })
         col.addView(opcao("Reiniciar a TV", "Desliga e liga de novo") {
             confirmar("Reiniciar a TV agora?") { rodarAdmin("reboot") }
         })
