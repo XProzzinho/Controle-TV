@@ -1342,6 +1342,9 @@ class MainActivity : Activity() {
         col.addView(opcao("Atualizar Início TV", "Baixa a última versão do GitHub e instala na TV") {
             instalarLink(Tv.LINK_INICIO)
         })
+        col.addView(opcao("Atualizar TV Online", "Instala ou atualiza o app de TV ao vivo e Filmes e Séries") {
+            instalarLink(Tv.LINK_TVONLINE)
+        })
         val linkBox = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -1490,7 +1493,7 @@ class MainActivity : Activity() {
         col.addView(titulo("TV ao vivo (IPTV)"))
         col.addView(
             textoJanela(
-                "Cole o link da lista de canais ao vivo (M3U ou M3U8). Na TV, abra \"● TV ao vivo\" ao lado das abas.",
+                "As listas ficam no app TV Online (instale com \"Atualizar TV Online\"). Cole o link da lista de canais ao vivo (M3U ou M3U8).",
                 13f,
             ).apply { setPadding(dp(4), 0, 0, dp(4)) },
         )
@@ -1511,12 +1514,12 @@ class MainActivity : Activity() {
         }
         fun mandarLista(link: String) {
             val seguro = link.replace("'", "'\\''")
-            rodarAdmin("am broadcast -n com.geanalves.tvhome/.ConfigReceiver --es iptv '$seguro'") { out ->
+            rodarAdmin("am broadcast -n com.geanalves.tvonline/.ConfigReceiver --es iptv '$seguro'") { out ->
                 if (out?.contains("data=\"ok\"") == true) {
-                    toast(if (link.isBlank()) "Lista tirada da TV" else "Lista enviada! Abra TV ao vivo na TV")
+                    toast(if (link.isBlank()) "Lista tirada da TV" else "Lista enviada! Abra o TV Online na TV")
                     iptvCampo.setText("")
                 } else {
-                    toast("A TV não recebeu. Ela tem o Início TV atualizado?")
+                    toast("A TV não recebeu. Ela tem o app TV Online? (Atualizar TV Online, acima)")
                 }
             }
         }
@@ -1537,7 +1540,7 @@ class MainActivity : Activity() {
         col.addView(titulo("Filmes e Séries"))
         col.addView(
             textoJanela(
-                "Cole o link da lista de filmes e séries (M3U). Na TV, eles aparecem nas abas Filmes e Séries da tela inicial, separados sozinhos.",
+                "Cole o link da lista de filmes e séries (M3U). Eles aparecem no app TV Online, em Filmes e Séries, separados sozinhos.",
                 13f,
             ).apply { setPadding(dp(4), 0, 0, dp(4)) },
         )
@@ -1558,12 +1561,12 @@ class MainActivity : Activity() {
         }
         fun mandarVod(link: String) {
             val seguro = link.replace("'", "'\\''")
-            rodarAdmin("am broadcast -n com.geanalves.tvhome/.ConfigReceiver --es vod '$seguro'") { out ->
+            rodarAdmin("am broadcast -n com.geanalves.tvonline/.ConfigReceiver --es vod '$seguro'") { out ->
                 if (out?.contains("data=\"ok\"") == true) {
-                    toast(if (link.isBlank()) "Lista tirada da TV" else "Lista enviada! Veja nas abas Filmes e Séries da TV")
+                    toast(if (link.isBlank()) "Lista tirada da TV" else "Lista enviada! Abra o TV Online na TV")
                     vodCampo.setText("")
                 } else {
-                    toast("A TV não recebeu. Ela tem o Início TV atualizado?")
+                    toast("A TV não recebeu. Ela tem o app TV Online? (Atualizar TV Online, acima)")
                 }
             }
         }
