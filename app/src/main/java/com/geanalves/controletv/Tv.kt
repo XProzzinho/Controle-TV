@@ -101,6 +101,20 @@ class Tv(private val ctx: Context) {
 
     fun tecla(codigo: Int) = rodar("input keyevent $codigo")
 
+    /**
+     * Brilho da tela pelo Início TV (véu escuro por cima de tudo).
+     * [extra] = "--ei nivel 30" ou "--ei passo -10" ou "" (só consultar).
+     * Devolve o nível novo (5 a 100) ou null se o Início TV não estiver na TV.
+     */
+    fun brilho(extra: String, cb: (Int?) -> Unit) {
+        rodar(
+            "appops set com.geanalves.tvhome SYSTEM_ALERT_WINDOW allow 2>/dev/null; " +
+                "am broadcast -n com.geanalves.tvhome/.BrilhoReceiver $extra",
+        ) { out ->
+            cb(out?.let { Regex("data=\"(\\d+)\"").find(it)?.groupValues?.get(1)?.toIntOrNull() })
+        }
+    }
+
     /** Comando livre (terminal da Administração). Devolve o que a TV respondeu. */
     fun comando(cmd: String, cb: (String?) -> Unit) = rodar(cmd, cb)
 

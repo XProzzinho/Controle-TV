@@ -224,6 +224,8 @@ class MainActivity : Activity() {
         col.addView(linhaNavegacao(), LinearLayout.LayoutParams(-2, -2).apply { gravity = Gravity.CENTER_HORIZONTAL })
         col.addView(espaco(h = 16))
         col.addView(linhaVolume(), LinearLayout.LayoutParams(-2, -2).apply { gravity = Gravity.CENTER_HORIZONTAL })
+        col.addView(espaco(h = 16))
+        col.addView(linhaBrilho(), LinearLayout.LayoutParams(-2, -2).apply { gravity = Gravity.CENTER_HORIZONTAL })
         col.addView(titulo("Digitar na TV"))
         col.addView(teclado())
         col.addView(cabecalhoApps())
@@ -344,6 +346,48 @@ class MainActivity : Activity() {
         p.addView(botao(R.drawable.ic_mute, tamanho = 60, fundo = Cores.campo) { tv.tecla(Tv.MUDO) })
         p.addView(espaco(w = 14))
         p.addView(botao(R.drawable.ic_vol_up, tamanho = 60, repetir = true) { tv.tecla(Tv.VOL_MAIS) })
+        return p
+    }
+
+    private lateinit var brilhoText: TextView
+
+    private fun mostrarBrilho(n: Int?) {
+        if (!::brilhoText.isInitialized) return
+        if (n == null) {
+            toast("Para o brilho, instale o Início TV nessa TV")
+            brilhoText.text = "Brilho"
+        } else {
+            brilhoText.text = "Brilho $n%"
+        }
+    }
+
+    /** Brilho: menos, dormir (bem baixinho) e mais. Tocar no texto volta ao normal. */
+    private fun linhaBrilho(): View {
+        val p = pilula()
+        p.addView(botao(R.drawable.ic_claro, tamanho = 60, tamIcone = 17, repetir = true) {
+            tv.brilho("--ei passo -10") { mostrarBrilho(it) }
+        })
+        brilhoText = TextView(this).apply {
+            text = "Brilho"
+            textSize = 15f
+            setTextColor(Cores.cinza)
+            gravity = Gravity.CENTER
+            minWidth = dp(92)
+            setPadding(dp(6), 0, dp(6), 0)
+            setOnClickListener {
+                vibrar(this)
+                tv.brilho("--ei nivel 100") { mostrarBrilho(it) }
+            }
+        }
+        p.addView(brilhoText)
+        // Dormir: brilho bem baixinho de uma vez
+        p.addView(botao(R.drawable.ic_lua, tamanho = 60, tamIcone = 22, fundo = Cores.campo) {
+            tv.brilho("--ei nivel 10") { mostrarBrilho(it) }
+        })
+        p.addView(espaco(w = 14))
+        p.addView(botao(R.drawable.ic_claro, tamanho = 60, tamIcone = 27, repetir = true) {
+            tv.brilho("--ei passo 10") { mostrarBrilho(it) }
+        })
         return p
     }
 
@@ -494,6 +538,7 @@ class MainActivity : Activity() {
             Tv.Estado.CONECTADO -> {
                 statusDot.setColor(Cores.verde)
                 statusText.text = "Conectado · ${tv.ip}"
+                tv.brilho("") { n -> if (n != null) brilhoText.text = "Brilho $n%" }
                 tv.pacotes { p ->
                     if (p != null) {
                         instalados = p
