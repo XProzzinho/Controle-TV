@@ -1148,6 +1148,22 @@ class MainActivity : Activity() {
         col.addView(opcao("Animações normais", "Volta ao padrão (1x)") {
             rodarAdmin("settings put global window_animation_scale 1; settings put global transition_animation_scale 1; settings put global animator_duration_scale 1")
         })
+        col.addView(opcao("Desligar protetor de tela da TV", "Fica só a tela de descanso do Início TV") {
+            rodarAdmin(
+                "settings put secure screensaver_enabled 0; " +
+                    "settings put secure screensaver_activate_on_sleep 0; " +
+                    "settings put secure screensaver_activate_on_dock 0; " +
+                    "pm disable-user --user 0 com.google.android.backdrop 2>&1; " +
+                    "echo Protetor da TV: \$(settings get secure screensaver_enabled)",
+            )
+        })
+        col.addView(opcao("Religar protetor de tela da TV", "Volta o que veio de fábrica") {
+            rodarAdmin(
+                "pm enable com.google.android.backdrop 2>&1; " +
+                    "settings put secure screensaver_enabled 1; " +
+                    "settings put secure screensaver_activate_on_sleep 1",
+            )
+        })
         col.addView(opcao("Liberar memória", "Fecha os apps abertos em segundo plano") { rodarAdmin("am kill-all") })
         col.addView(opcao("Informações da TV", "Modelo, Android, memória e espaço") {
             rodarAdmin("echo Modelo: \$(getprop ro.product.manufacturer) \$(getprop ro.product.model); echo Android: \$(getprop ro.build.version.release); grep -E 'MemTotal|MemAvailable' /proc/meminfo; df -h /data | tail -1")
