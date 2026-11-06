@@ -1490,7 +1490,7 @@ class MainActivity : Activity() {
         col.addView(titulo("TV ao vivo (IPTV)"))
         col.addView(
             textoJanela(
-                "Cole o link da sua lista de canais (M3U ou M3U8). Na TV, abra \"● TV ao vivo\" ao lado das abas.",
+                "Cole o link da lista de canais ao vivo (M3U ou M3U8). Na TV, abra \"● TV ao vivo\" ao lado das abas.",
                 13f,
             ).apply { setPadding(dp(4), 0, 0, dp(4)) },
         )
@@ -1531,6 +1531,50 @@ class MainActivity : Activity() {
         })
         col.addView(opcao("Tirar a lista da TV") {
             confirmar("Tirar a lista de canais da TV?") { mandarLista("") }
+        })
+
+        // Filmes e Séries: a segunda lista (vai para "Filmes e Séries" no Início TV)
+        col.addView(titulo("Filmes e Séries"))
+        col.addView(
+            textoJanela(
+                "Cole o link da lista de filmes e séries (M3U). Na TV, abra \"● Filmes e Séries\" ao lado da TV ao vivo.",
+                13f,
+            ).apply { setPadding(dp(4), 0, 0, dp(4)) },
+        )
+        val vodBox = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = rounded(Cores.campo, 16)
+            setPadding(dp(14), dp(2), dp(4), dp(2))
+        }
+        val vodCampo = EditText(this).apply {
+            hint = "https://…/filmes.m3u"
+            textSize = 14f
+            setTextColor(Cores.tinta)
+            setHintTextColor(Cores.cinza)
+            background = null
+            isSingleLine = true
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+        }
+        fun mandarVod(link: String) {
+            val seguro = link.replace("'", "'\\''")
+            rodarAdmin("am broadcast -n com.geanalves.tvhome/.ConfigReceiver --es vod '$seguro'") { out ->
+                if (out?.contains("data=\"ok\"") == true) {
+                    toast(if (link.isBlank()) "Lista tirada da TV" else "Lista enviada! Abra Filmes e Séries na TV")
+                    vodCampo.setText("")
+                } else {
+                    toast("A TV não recebeu. Ela tem o Início TV atualizado?")
+                }
+            }
+        }
+        vodBox.addView(vodCampo, LinearLayout.LayoutParams(0, -2, 1f))
+        vodBox.addView(botao(R.drawable.ic_send, tamanho = 44, tamIcone = 20, fundo = Cores.tinta, corIcone = Cores.papel) {
+            val l = vodCampo.text.toString().trim()
+            if (l.startsWith("http")) mandarVod(l) else toast("Cole um link que começa com http")
+        })
+        col.addView(vodBox, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        col.addView(opcao("Tirar a lista de filmes e séries") {
+            confirmar("Tirar a lista de filmes e séries da TV?") { mandarVod("") }
         })
 
         col.addView(titulo("Segurança"))
