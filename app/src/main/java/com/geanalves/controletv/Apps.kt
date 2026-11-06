@@ -51,6 +51,14 @@ class Prefs(ctx: Context) {
         get() = sp.getString("pin", null)
         set(v) = sp.edit().putString("pin", v).apply()
 
+    /** Ícones já copiados da TV: pacote -> "b" (banner) ou "i" (ícone). */
+    var icones: Map<String, String>
+        get() = sp.getStringSet("icones", emptySet())!!.mapNotNull {
+            val i = it.indexOf('|')
+            if (i <= 0) null else it.substring(0, i) to it.substring(i + 1)
+        }.toMap()
+        set(v) = sp.edit().putStringSet("icones", v.map { "${it.key}|${it.value}" }.toSet()).apply()
+
     var escuro: Boolean
         get() = sp.getBoolean("escuro", false)
         set(v) = sp.edit().putBoolean("escuro", v).apply()

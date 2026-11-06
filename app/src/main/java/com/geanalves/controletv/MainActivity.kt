@@ -495,19 +495,61 @@ class MainActivity : Activity() {
     }
 
     @SuppressLint("ClickableViewAccessibility")
+    private fun pastaIcones() = java.io.File(filesDir, "icones")
+
+    /** Bloco do app: com o ícone de verdade (copiado da TV) ou colorido com o nome. */
     private fun blocoApp(app: AppTv): View {
-        val bg = rounded(app.cor, 18)
-        val t = TextView(this).apply {
-            text = app.nome
-            textSize = 15f
-            setTextColor(Color.WHITE)
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            background = bg
-            elevation = dpf(2)
-            setPadding(dp(6), 0, dp(6), 0)
-            maxLines = 2
+        val icones = prefs.icones
+        val pkg = app.pacotes.firstOrNull { it in icones && java.io.File(pastaIcones(), "$it.png").exists() }
+        val bmp = pkg?.let { android.graphics.BitmapFactory.decodeFile(java.io.File(pastaIcones(), "$it.png").absolutePath) }
+        val t: View = when {
+            bmp != null && icones[pkg] == "b" -> FrameLayout(this).apply {
+                // Banner largo da TV, igual à barra de apps do Início TV
+                background = rounded(0xFF1C1C1E.toInt(), 18)
+                clipToOutline = true
+                elevation = dpf(2)
+                addView(
+                    ImageView(this@MainActivity).apply {
+                        setImageBitmap(bmp)
+                        scaleType = ImageView.ScaleType.CENTER_CROP
+                    },
+                    FrameLayout.LayoutParams(-1, -1),
+                )
+            }
+            bmp != null -> LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                background = rounded(Cores.janela, 18)
+                elevation = dpf(2)
+                addView(
+                    ImageView(this@MainActivity).apply { setImageBitmap(bmp) },
+                    LinearLayout.LayoutParams(dp(30), dp(30)),
+                )
+                addView(
+                    TextView(this@MainActivity).apply {
+                        text = app.nome
+                        textSize = 11f
+                        setTextColor(Cores.tinta)
+                        maxLines = 1
+                        ellipsize = android.text.TextUtils.TruncateAt.END
+                        setPadding(dp(4), dp(3), dp(4), 0)
+                    },
+                )
+            }
+            else -> TextView(this).apply {
+                text = app.nome
+                textSize = 15f
+                setTextColor(Color.WHITE)
+                typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.CENTER
+                background = rounded(app.cor, 18)
+                elevation = dpf(2)
+                setPadding(dp(6), 0, dp(6), 0)
+                maxLines = 2
+            }
         }
+        t.isClickable = true
+        t.isLongClickable = true
         t.setOnClickListener {
             vibrar(t)
             tv.abrirPrimeiro(app.pacotes)
@@ -532,6 +574,22 @@ class MainActivity : Activity() {
         return t
     }
 
+    /** Copia da TV os ícones que ainda não estão no celular. */
+    private fun buscarIcones() {
+        val inst = instalados ?: return
+        val ja = prefs.icones.keys.filter { java.io.File(pastaIcones(), "$it.png").exists() }.toSet()
+        val faltam = (Apps.conhecidos.flatMap { it.pacotes } + prefs.extras.keys)
+            .filter { it in inst && it !in ja }
+            .distinct()
+        if (faltam.isEmpty()) return
+        tv.icones(faltam, pastaIcones()) { mapa ->
+            if (!mapa.isNullOrEmpty()) {
+                prefs.icones = prefs.icones + mapa
+                montarApps()
+            }
+        }
+    }
+
     // ---------- conexão ----------
 
     private fun mostrarEstado(e: Tv.Estado, msg: String?) {
@@ -545,6 +603,7 @@ class MainActivity : Activity() {
                     if (p != null) {
                         instalados = p
                         montarApps()
+                        buscarIcones()
                     }
                 }
             }
@@ -723,6 +782,7 @@ class MainActivity : Activity() {
                     opcao(Apps.nomeDoPacote(pkg), pkg) {
                         prefs.extras = prefs.extras + (pkg to Apps.nomeDoPacote(pkg))
                         montarApps()
+                        buscarIcones()
                         d.dismiss()
                     },
                 )
@@ -1095,6 +1155,62 @@ class MainActivity : Activity() {
         col.addView(opcao("Ver tela inicial atual") { rodarAdmin("cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -1") })
         col.addView(opcao("Reiniciar a TV", "Desliga e liga de novo") {
             confirmar("Reiniciar a TV agora?") { rodarAdmin("reboot") }
+        })
+
+        // Chave do TMDB: os cartazes de filmes e séries do Início TV
+        col.addView(titulo("Cartazes de filmes (TMDB)"))
+        col.addView(
+            textoJanela(
+                "Para aparecer os cartazes no Início TV, crie uma chave grátis:\n" +
+                    "1. Toque em \"Abrir site do TMDB\" e crie uma conta.\n" +
+                    "2. Em Configurações › API, peça uma chave (uso pessoal).\n" +
+                    "3. Copie a \"Chave da API\" ou o \"Token de leitura\" e cole aqui.",
+                13f,
+            ).apply { setPadding(dp(4), 0, 0, dp(4)) },
+        )
+        col.addView(opcao("Abrir site do TMDB", "themoviedb.org › Configurações › API") {
+            try {
+                startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://www.themoviedb.org/settings/api")))
+            } catch (_: Throwable) {
+                toast("Não achei o navegador")
+            }
+        })
+        val chaveBox = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = rounded(Cores.campo, 16)
+            setPadding(dp(14), dp(2), dp(4), dp(2))
+        }
+        val chaveCampo = EditText(this).apply {
+            hint = "Cole a chave do TMDB"
+            textSize = 14f
+            setTextColor(Cores.tinta)
+            setHintTextColor(Cores.cinza)
+            background = null
+            isSingleLine = true
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+        }
+        chaveBox.addView(chaveCampo, LinearLayout.LayoutParams(0, -2, 1f))
+        chaveBox.addView(botao(R.drawable.ic_send, tamanho = 44, tamIcone = 20, fundo = Cores.tinta, corIcone = Cores.papel) {
+            val k = chaveCampo.text.toString().trim()
+            if (!Regex("[A-Za-z0-9._-]{20,400}").matches(k)) {
+                toast("Essa chave não parece certa. Copie de novo do site.")
+            } else {
+                rodarAdmin("am broadcast -n com.geanalves.tvhome/.ConfigReceiver --es tmdb '$k'") { out ->
+                    if (out?.contains("salva") == true) {
+                        toast("Chave enviada! Os cartazes vão aparecer na TV")
+                        chaveCampo.setText("")
+                    } else {
+                        toast("A TV não recebeu. Ela tem o Início TV atualizado?")
+                    }
+                }
+            }
+        })
+        col.addView(chaveBox, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        col.addView(opcao("Tirar a chave da TV", "Os cartazes somem e a fileira mostra os apps") {
+            confirmar("Tirar a chave do TMDB da TV?") {
+                rodarAdmin("am broadcast -n com.geanalves.tvhome/.ConfigReceiver --es tmdb ''")
+            }
         })
 
         col.addView(titulo("Segurança"))

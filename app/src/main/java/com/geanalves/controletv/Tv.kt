@@ -148,6 +148,38 @@ class Tv(private val ctx: Context) {
         }
     }
 
+    /**
+     * Busca os ícones de verdade dos apps na TV (o Início TV salva, o celular copia).
+     * Devolve pacote -> "b" (banner largo) ou "i" (ícone quadrado); null se não deu.
+     */
+    fun icones(pkgs: List<String>, pasta: File, cb: (Map<String, String>?) -> Unit) {
+        if (pkgs.isEmpty()) return
+        fila.execute {
+            val res = try {
+                val d = conexao()
+                val out = d.shell("am broadcast -n com.geanalves.tvhome/.ConfigReceiver --es icones '${pkgs.joinToString(",")}'").allOutput
+                val dir = Regex("data=\"([^\"]+)\"").find(out)?.groupValues?.get(1)
+                    ?: throw IllegalStateException("sem Início TV")
+                pasta.mkdirs()
+                val mapa = HashMap<String, String>()
+                for (linha in d.shell("cat '$dir/indice.txt'").allOutput.lines()) {
+                    val partes = linha.trim().split('|')
+                    if (partes.size != 2) continue
+                    val (pkg, tipo) = partes
+                    try {
+                        d.pull(File(pasta, "$pkg.png"), "$dir/$pkg.png")
+                        mapa[pkg] = tipo
+                    } catch (_: Throwable) {
+                    }
+                }
+                mapa
+            } catch (_: Throwable) {
+                null
+            }
+            main.post { cb(res) }
+        }
+    }
+
     /** Comando livre (terminal da Administração). Devolve o que a TV respondeu. */
     fun comando(cmd: String, cb: (String?) -> Unit) = rodar(cmd, cb)
 
