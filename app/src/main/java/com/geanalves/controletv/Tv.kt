@@ -115,6 +115,39 @@ class Tv(private val ctx: Context) {
         }
     }
 
+    /** Pega a conexão aberta ou conecta de novo (roda dentro da fila). */
+    private fun conexao(): Dadb {
+        dadb?.let { return it }
+        val alvo = ip ?: throw IllegalStateException("Nenhuma TV escolhida")
+        mudar(Estado.CONECTANDO)
+        val d = Dadb.create(alvo, PORTA, chave)
+        d.shell("echo ok")
+        dadb = d
+        mudar(Estado.CONECTADO)
+        return d
+    }
+
+    /** Manda um APK do celular para a TV e instala (sem precisar aceitar nada na TV). */
+    fun instalar(apk: File, fim: (Boolean, String) -> Unit) {
+        fila.execute {
+            var ok = false
+            var msg = ""
+            for (tentativa in 0..1) {
+                try {
+                    conexao().install(apk)
+                    ok = true
+                    msg = "Instalado na TV!"
+                    break
+                } catch (t: Throwable) {
+                    msg = t.message ?: t.toString()
+                    // Conexão caiu: tenta de novo uma vez; erro do instalador: para
+                    if (t is java.io.IOException) fechar() else break
+                }
+            }
+            main.post { fim(ok, msg) }
+        }
+    }
+
     /** Comando livre (terminal da Administração). Devolve o que a TV respondeu. */
     fun comando(cmd: String, cb: (String?) -> Unit) = rodar(cmd, cb)
 
@@ -175,6 +208,59 @@ class Tv(private val ctx: Context) {
 
     companion object {
         const val PORTA = 5555
+
+        /** Última versão do Início TV no GitHub. */
+        const val LINK_INICIO = "https://github.com/XProzzinho/inicio-tv./releases/latest/download/inicio-tv.apk"
+
+        /** Baixa um arquivo pela internet do celular, avisando o progresso em MB. */
+        fun baixar(link: String, destino: File, progresso: (String) -> Unit, fim: (File?, String?) -> Unit) {
+            val main = Handler(Looper.getMainLooper())
+            Thread {
+                try {
+                    var url = java.net.URL(link)
+                    var con: java.net.HttpURLConnection
+                    var pulos = 0
+                    while (true) {
+                        con = url.openConnection() as java.net.HttpURLConnection
+                        con.instanceFollowRedirects = false
+                        con.connectTimeout = 15_000
+                        con.readTimeout = 30_000
+                        val code = con.responseCode
+                        if (code in 300..399 && pulos < 8) {
+                            url = java.net.URL(url, con.getHeaderField("Location"))
+                            con.disconnect()
+                            pulos++
+                            continue
+                        }
+                        if (code !in 200..299) throw java.io.IOException("O link respondeu erro $code")
+                        break
+                    }
+                    val total = con.contentLengthLong
+                    var lido = 0L
+                    var ultimo = 0L
+                    con.inputStream.use { ent ->
+                        destino.outputStream().use { sai ->
+                            val buf = ByteArray(64 * 1024)
+                            while (true) {
+                                val n = ent.read(buf)
+                                if (n < 0) break
+                                sai.write(buf, 0, n)
+                                lido += n
+                                if (lido - ultimo >= 2 * 1024 * 1024) {
+                                    ultimo = lido
+                                    val mb = "%.1f".format(lido / 1048576f)
+                                    val tot = if (total > 0) " de %.1f MB".format(total / 1048576f) else " MB"
+                                    main.post { progresso("Baixando… $mb$tot") }
+                                }
+                            }
+                        }
+                    }
+                    main.post { fim(destino, null) }
+                } catch (t: Throwable) {
+                    main.post { fim(null, t.message ?: t.toString()) }
+                }
+            }.start()
+        }
 
         /** Uma conexão só para o app todo (não cai ao trocar claro/escuro). */
         @Volatile

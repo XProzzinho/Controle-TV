@@ -916,6 +916,44 @@ class MainActivity : Activity() {
         term.addView(linhaCmd, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         col.addView(term)
 
+        // Instalar APK na TV pelo celular
+        col.addView(titulo("Instalar na TV"))
+        col.addView(opcao("Atualizar Início TV", "Baixa a última versão do GitHub e instala na TV") {
+            instalarLink(Tv.LINK_INICIO)
+        })
+        val linkBox = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = rounded(Cores.campo, 16)
+            setPadding(dp(14), dp(2), dp(4), dp(2))
+        }
+        val linkCampo = EditText(this).apply {
+            hint = "Cole aqui o link do APK"
+            textSize = 14f
+            setTextColor(Cores.tinta)
+            setHintTextColor(Cores.cinza)
+            background = null
+            isSingleLine = true
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+        }
+        linkBox.addView(linkCampo, LinearLayout.LayoutParams(0, -2, 1f))
+        linkBox.addView(botao(R.drawable.ic_send, tamanho = 44, tamIcone = 20, fundo = Cores.tinta, corIcone = Cores.papel) {
+            val l = linkCampo.text.toString().trim()
+            if (l.startsWith("http")) instalarLink(l) else toast("Cole um link que começa com http")
+        })
+        col.addView(linkBox, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        col.addView(opcao("Escolher APK do celular", "Um arquivo .apk que já está baixado no celular") {
+            val i = android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(android.content.Intent.CATEGORY_OPENABLE)
+                type = "*/*"
+            }
+            try {
+                startActivityForResult(i, PEDIR_APK)
+            } catch (_: Throwable) {
+                toast("Não achei o gerenciador de arquivos")
+            }
+        })
+
         // Apps da TV
         col.addView(titulo("Apps da TV"))
         col.addView(opcao("Gerenciar apps", "Desativar, reativar, remover ou abrir qualquer app") { gerenciarApps(false) })
@@ -1072,6 +1110,75 @@ class MainActivity : Activity() {
         }
     }
 
+    // ---------- instalar APK ----------
+
+    private var instalando = false
+
+    private fun instalarLink(link: String) {
+        if (instalando) {
+            toast("Já tem uma instalação em andamento")
+            return
+        }
+        instalando = true
+        saidaAdmin.append("\n» Baixando $link\n")
+        val destino = java.io.File(cacheDir, "para-tv.apk")
+        Tv.baixar(
+            link,
+            destino,
+            progresso = { saidaAdmin.append("$it\n") },
+            fim = { arq, erro ->
+                if (arq == null) {
+                    instalando = false
+                    saidaAdmin.append("Não consegui baixar: $erro\n")
+                } else {
+                    mandarParaTv(arq)
+                }
+            },
+        )
+    }
+
+    private fun mandarParaTv(apk: java.io.File) {
+        instalando = true
+        saidaAdmin.append("Enviando para a TV e instalando (%.1f MB)…\n".format(apk.length() / 1048576f))
+        tv.instalar(apk) { ok, msg ->
+            instalando = false
+            saidaAdmin.append(if (ok) "✔ $msg\n" else "✖ Não instalou: $msg\n")
+            toast(if (ok) "Instalado na TV!" else "Não instalou na TV")
+            apk.delete()
+        }
+    }
+
+    @Deprecated("Usado só para escolher o APK")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != PEDIR_APK || resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+        if (!::saidaAdmin.isInitialized) return
+        if (instalando) {
+            toast("Já tem uma instalação em andamento")
+            return
+        }
+        instalando = true
+        saidaAdmin.append("\n» Preparando o APK do celular…\n")
+        Thread {
+            val destino = java.io.File(cacheDir, "para-tv.apk")
+            val ok = try {
+                contentResolver.openInputStream(uri)!!.use { e -> destino.outputStream().use { e.copyTo(it) } }
+                true
+            } catch (_: Throwable) {
+                false
+            }
+            runOnUiThread {
+                if (ok) {
+                    mandarParaTv(destino)
+                } else {
+                    instalando = false
+                    saidaAdmin.append("Não consegui ler o arquivo.\n")
+                }
+            }
+        }.start()
+    }
+
     // ---------- modo escuro ----------
 
     /** Lua = deixa tudo escuro; sol = volta para o claro. */
@@ -1079,5 +1186,9 @@ class MainActivity : Activity() {
         prefs.escuro = !prefs.escuro
         Cores.escuro = prefs.escuro
         recreate()
+    }
+
+    companion object {
+        private const val PEDIR_APK = 42
     }
 }
