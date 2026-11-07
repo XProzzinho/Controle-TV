@@ -51,6 +51,7 @@ class MainActivity : Activity() {
         tv.aoMudar = { e, msg -> mostrarEstado(e, msg) }
         pintarBarras()
         setContentView(montar())
+        conferirAtualizacoes()
         montarApps()
         val ip = prefs.ip
         when {
@@ -218,6 +219,12 @@ class MainActivity : Activity() {
         root.addView(scroll, FrameLayout.LayoutParams(-1, -1))
 
         col.addView(topo())
+        // Cartão de atualizações: só aparece quando tem versão nova
+        avisoBox = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+        }
+        col.addView(avisoBox, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(18) })
         col.addView(espaco(h = 28))
         // O círculo precisa do tamanho certo, senão o OK cobre as setas
         val lado = (resources.displayMetrics.widthPixels - dp(40)).coerceAtMost(dp(300))
@@ -855,6 +862,7 @@ class MainActivity : Activity() {
                 statusText.text = "Conectado · ${tv.ip}"
                 tv.brilho("") { n -> if (n != null) mostrarBrilho(n) }
                 tv.volume(null) { mostrarVolume(it) }
+                conferirAtualizacoes()
                 carregarLembretes()
                 tv.pacotes { p ->
                     if (p != null) {
@@ -1698,6 +1706,131 @@ class MainActivity : Activity() {
                 )
             }
         }
+    }
+
+    // ---------- atualizações: o controle avisa e você só confirma ----------
+
+    private lateinit var avisoBox: LinearLayout
+    private val novas = LinkedHashMap<String, Atualizacoes.Nova>()
+
+    /** Confere as versões novas dos três apps no GitHub. */
+    private fun conferirAtualizacoes() {
+        for (app in Atualizacoes.APPS) {
+            Atualizacoes.ultima(app) { r ->
+                val (n, link) = r ?: return@ultima
+                if (!app.naTv) {
+                    val aqui = Atualizacoes.versaoAqui(this)
+                    if (n > aqui) mostrarNova(Atualizacoes.Nova(app, aqui, n, link))
+                } else if (tv.estado == Tv.Estado.CONECTADO) {
+                    tv.versaoNaTv(app.pkg) { naTv ->
+                        // Só avisa de app que já está na TV (o TV Online só se você instalou)
+                        if (naTv != null && n > naTv) mostrarNova(Atualizacoes.Nova(app, naTv, n, link))
+                    }
+                }
+            }
+        }
+    }
+
+    private fun mostrarNova(v: Atualizacoes.Nova) {
+        novas[v.app.pkg] = v
+        avisoBox.removeAllViews()
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(Cores.janela, 24)
+            elevation = dpf(3)
+            setPadding(dp(18), dp(16), dp(18), dp(12))
+        }
+        card.addView(textoJanela("Atualizações", 18f, Cores.tinta, negrito = true))
+        for (n in novas.values) {
+            val onde = if (n.app.naTv) "Instalar na TV" else "Atualizar no celular"
+            val de = n.atual?.let { "1.$it → " } ?: ""
+            val status = textoJanela("", 12f)
+            card.addView(
+                opcao("${n.app.nome}  ${de}1.${n.nova}", onde) {
+                    if (n.app.naTv) {
+                        status.text = "Baixando…"
+                        instalarNaTvComAviso(n, status)
+                    } else {
+                        status.text = "Baixando…"
+                        atualizarControle(n, status)
+                    }
+                },
+            )
+            card.addView(status)
+        }
+        avisoBox.addView(card)
+        avisoBox.visibility = View.VISIBLE
+    }
+
+    private fun tirarAviso(pkg: String) {
+        novas.remove(pkg)
+        if (novas.isEmpty()) avisoBox.visibility = View.GONE else mostrarNova(novas.values.first())
+    }
+
+    /** Baixa no celular e manda para a TV, com o andamento embaixo do botão. */
+    private fun instalarNaTvComAviso(n: Atualizacoes.Nova, status: TextView) {
+        val destino = java.io.File(cacheDir, "para-tv.apk")
+        Tv.baixar(
+            n.link,
+            destino,
+            progresso = { status.text = it },
+            fim = { arq, erro ->
+                if (arq == null) {
+                    status.text = "Não consegui baixar: $erro"
+                } else {
+                    status.text = "Instalando na TV…"
+                    tv.instalar(arq) { ok, msg ->
+                        arq.delete()
+                        if (ok) {
+                            toast("${n.app.nome} atualizado na TV!")
+                            tirarAviso(n.app.pkg)
+                        } else {
+                            status.text = "Não instalou: $msg"
+                        }
+                    }
+                }
+            },
+        )
+    }
+
+    /** Atualiza o próprio Controle TV: baixa e abre o instalador do celular. */
+    private fun atualizarControle(n: Atualizacoes.Nova, status: TextView) {
+        if (android.os.Build.VERSION.SDK_INT >= 26 && !packageManager.canRequestPackageInstalls()) {
+            toast("Permita o Controle TV instalar apps e toque de novo")
+            try {
+                startActivity(
+                    android.content.Intent(
+                        android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        android.net.Uri.parse("package:$packageName"),
+                    ),
+                )
+            } catch (_: Throwable) {
+            }
+            status.text = ""
+            return
+        }
+        Tv.baixar(
+            n.link,
+            Atualizacoes.arquivo(this),
+            progresso = { status.text = it },
+            fim = { arq, erro ->
+                if (arq == null) {
+                    status.text = "Não consegui baixar: $erro"
+                } else {
+                    status.text = ""
+                    val uri = android.net.Uri.parse("content://$packageName.apk/${arq.name}")
+                    try {
+                        startActivity(
+                            android.content.Intent(android.content.Intent.ACTION_VIEW)
+                                .setDataAndType(uri, "application/vnd.android.package-archive")
+                                .addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION),
+                        )
+                    } catch (_: Throwable) {
+                        toast("Não consegui abrir o instalador")
+                    }
+                }
+            },
+        )
     }
 
     // ---------- instalar APK ----------

@@ -196,6 +196,13 @@ class Tv(private val ctx: Context) {
         }
     }
 
+    /** Versão de um app instalado na TV (o número do versionCode), ou null se não tiver. */
+    fun versaoNaTv(pkg: String, cb: (Int?) -> Unit) {
+        rodar("dumpsys package $pkg | grep -m1 versionCode") { out ->
+            cb(out?.let { Regex("versionCode=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() })
+        }
+    }
+
     /** Comando livre (terminal da Administração). Devolve o que a TV respondeu. */
     fun comando(cmd: String, cb: (String?) -> Unit) = rodar(cmd, cb)
 
