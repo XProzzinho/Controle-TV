@@ -1501,6 +1501,8 @@ class MainActivity : Activity() {
             if (!Regex("[A-Za-z0-9._-]{20,400}").matches(k)) {
                 toast("Essa chave não parece certa. Copie de novo do site.")
             } else {
+                // Manda também para o Lumi TV (informações dos filmes)
+                rodarAdmin("am broadcast -n com.geanalves.tvonline/.ConfigReceiver --es tmdb '$k'") { }
                 rodarAdmin("am broadcast -n com.geanalves.tvhome/.ConfigReceiver --es tmdb '$k'") { out ->
                     if (out?.contains("salva") == true) {
                         toast("Chave enviada! Os cartazes vão aparecer na TV")
@@ -1514,6 +1516,7 @@ class MainActivity : Activity() {
         col.addView(chaveBox, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
         col.addView(opcao("Tirar a chave da TV", "Os cartazes somem e a fileira mostra os apps") {
             confirmar("Tirar a chave do TMDB da TV?") {
+                rodarAdmin("am broadcast -n com.geanalves.tvonline/.ConfigReceiver --es tmdb ''") { }
                 rodarAdmin("am broadcast -n com.geanalves.tvhome/.ConfigReceiver --es tmdb ''")
             }
         })
@@ -1610,6 +1613,39 @@ class MainActivity : Activity() {
         })
 
         // Pluto TV: troca a lista da aba Pluto TV do Lumi TV (vazio = volta para a lista padrão do Brasil)
+        // Buscar no Lumi TV: digita aqui e o resultado abre na TV
+        col.addView(titulo("Buscar no Lumi TV"))
+        val buscaBox = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = rounded(Cores.campo, 16)
+            setPadding(dp(14), dp(2), dp(4), dp(2))
+        }
+        val buscaCampo = EditText(this).apply {
+            hint = "Canal, filme ou série"
+            textSize = 14f
+            setTextColor(Cores.tinta)
+            setHintTextColor(Cores.cinza)
+            background = null
+            isSingleLine = true
+        }
+        fun buscarNaTv(modo: String) {
+            val q = buscaCampo.text.toString().trim()
+            if (q.isBlank()) {
+                toast("Digite o que procurar")
+                return
+            }
+            val seguro = q.replace("'", "'\\''")
+            rodarAdmin("am start -f 0x24000000 -n com.geanalves.tvonline/.IptvActivity --es modo $modo --es busca '$seguro'") { out ->
+                if (out != null && !out.contains("Error")) toast("Procurando \"$q\" na TV") else toast("A TV não abriu o Lumi TV. Ele está instalado?")
+            }
+        }
+        buscaBox.addView(buscaCampo, LinearLayout.LayoutParams(0, -2, 1f))
+        buscaBox.addView(botao(R.drawable.ic_send, tamanho = 44, tamIcone = 20, fundo = Cores.tinta, corIcone = Cores.papel) { buscarNaTv("iptv") })
+        col.addView(buscaBox, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        col.addView(opcao("Buscar em Filmes e Séries", "Usa o mesmo texto do campo acima") { buscarNaTv("vod") })
+        col.addView(opcao("Buscar na Pluto TV", "Usa o mesmo texto do campo acima") { buscarNaTv("pluto") })
+
         col.addView(titulo("Pluto TV"))
         col.addView(
             textoJanela(
