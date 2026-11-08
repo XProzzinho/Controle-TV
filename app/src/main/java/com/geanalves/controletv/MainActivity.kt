@@ -1605,6 +1605,53 @@ class MainActivity : Activity() {
             confirmar("Tirar a lista de filmes e séries da TV?") { mandarVod("") }
         })
 
+        // Pluto TV: troca a lista da aba Pluto TV do Lumi TV (vazio = volta para a lista padrão do Brasil)
+        col.addView(titulo("Pluto TV"))
+        col.addView(
+            textoJanela(
+                "A aba Pluto TV do Lumi TV já vem com a lista do Brasil. Para trocar, cole outro link (M3U) e mande.",
+                13f,
+            ).apply { setPadding(dp(4), 0, 0, dp(4)) },
+        )
+        val plutoBox = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = rounded(Cores.campo, 16)
+            setPadding(dp(14), dp(2), dp(4), dp(2))
+        }
+        val plutoCampo = EditText(this).apply {
+            hint = "https://…/pluto.m3u"
+            textSize = 14f
+            setTextColor(Cores.tinta)
+            setHintTextColor(Cores.cinza)
+            background = null
+            isSingleLine = true
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+        }
+        fun mandarPluto(link: String) {
+            val seguro = link.replace("'", "'\\''")
+            rodarAdmin("am broadcast -n com.geanalves.tvonline/.ConfigReceiver --es pluto '$seguro'") { out ->
+                if (out?.contains("data=\"ok\"") == true) {
+                    toast(if (link.isBlank()) "Pluto TV voltou para a lista padrão" else "Lista da Pluto TV trocada! Abra o Lumi TV na TV")
+                    plutoCampo.setText("")
+                } else {
+                    toast("A TV não recebeu. Atualize o Lumi TV na TV (Atualizar Lumi TV, acima)")
+                }
+            }
+        }
+        plutoBox.addView(plutoCampo, LinearLayout.LayoutParams(0, -2, 1f))
+        plutoBox.addView(botao(R.drawable.ic_send, tamanho = 44, tamIcone = 20, fundo = Cores.tinta, corIcone = Cores.papel) {
+            val l = plutoCampo.text.toString().trim()
+            if (l.startsWith("http")) mandarPluto(l) else toast("Cole um link que começa com http")
+        })
+        col.addView(plutoBox, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        col.addView(opcao("Pluto TV do Brasil", "Volta para a lista padrão (já vem no app)") {
+            mandarPluto("")
+        })
+        col.addView(opcao("Pluto TV de todos os países", "Canais da Pluto do mundo todo, separados por país") {
+            mandarPluto("https://raw.githubusercontent.com/BuddyChewChew/pluto/main/pluto_all.m3u")
+        })
+
 
         d.show()
     }
