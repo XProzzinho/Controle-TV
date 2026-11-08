@@ -244,8 +244,6 @@ class MainActivity : Activity() {
         appsGrid = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         col.addView(appsGrid)
         // Administração: comandos para modificar a TV (igual ao Bugjaeger)
-        col.addView(espaco(h = 24))
-        col.addView(botaoAdmin())
         return root
     }
 
@@ -262,6 +260,8 @@ class MainActivity : Activity() {
                 textSize = 30f
                 setTextColor(Cores.tinta)
                 typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+                // Segredo: 7 toques no título abrem a Administração
+                setOnClickListener { toqueSecreto() }
             },
         )
         val st = LinearLayout(this).apply {
@@ -1243,8 +1243,25 @@ class MainActivity : Activity() {
         c1.requestFocus()
     }
 
-    private fun abrirAdmin() {
-        pedirPin { abrirAdminLiberado() }
+    private fun abrirAdmin() = abrirAdminLiberado()
+
+    // Toques no título: igual às Opções do desenvolvedor do Android
+    private var toques = 0
+    private var ultimoToque = 0L
+
+    private fun toqueSecreto() {
+        val agora = android.os.SystemClock.elapsedRealtime()
+        // Mais de 2 segundos entre um toque e outro: recomeça a contar
+        toques = if (agora - ultimoToque > 2000) 1 else toques + 1
+        ultimoToque = agora
+        val faltam = 7 - toques
+        when {
+            faltam <= 0 -> {
+                toques = 0
+                abrirAdmin()
+            }
+            toques >= 4 -> toast("Faltam $faltam toques")
+        }
     }
 
     private fun abrirAdminLiberado() {
@@ -1588,8 +1605,6 @@ class MainActivity : Activity() {
             confirmar("Tirar a lista de filmes e séries da TV?") { mandarVod("") }
         })
 
-        col.addView(titulo("Segurança"))
-        col.addView(opcao("Trocar PIN", "Crie um PIN novo para a Administração") { novoPin {} })
 
         d.show()
     }
