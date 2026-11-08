@@ -20,7 +20,7 @@ object Atualizacoes {
 
     val APPS = listOf(
         App("Início TV", "XProzzinho/inicio-tv.", "com.geanalves.tvhome", "inicio-tv.apk", naTv = true),
-        App("TV Online", "XProzzinho/TV-online", "com.geanalves.tvonline", "tv-online.apk", naTv = true),
+        App("Lumi TV", "XProzzinho/TV-online", "com.geanalves.tvonline", "tv-online.apk", naTv = true),
         App("Controle TV", "XProzzinho/Controle-TV", "com.geanalves.controletv", "controle-tv.apk", naTv = false),
     )
 

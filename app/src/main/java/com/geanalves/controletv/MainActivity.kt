@@ -1367,7 +1367,7 @@ class MainActivity : Activity() {
         col.addView(opcao("Atualizar Início TV", "Baixa a última versão do GitHub e instala na TV") {
             instalarLink(Tv.LINK_INICIO)
         })
-        col.addView(opcao("Atualizar TV Online", "Instala ou atualiza o app de TV ao vivo e Filmes e Séries") {
+        col.addView(opcao("Atualizar Lumi TV", "Instala ou atualiza o app de TV ao vivo e Filmes e Séries") {
             instalarLink(Tv.LINK_TVONLINE)
         })
         val linkBox = LinearLayout(this).apply {
@@ -1518,7 +1518,7 @@ class MainActivity : Activity() {
         col.addView(titulo("TV ao vivo (IPTV)"))
         col.addView(
             textoJanela(
-                "As listas ficam no app TV Online (instale com \"Atualizar TV Online\"). Cole o link da lista de canais ao vivo (M3U ou M3U8).",
+                "As listas ficam no app Lumi TV (instale com \"Atualizar Lumi TV\"). Cole o link da lista de canais ao vivo (M3U ou M3U8).",
                 13f,
             ).apply { setPadding(dp(4), 0, 0, dp(4)) },
         )
@@ -1541,10 +1541,10 @@ class MainActivity : Activity() {
             val seguro = link.replace("'", "'\\''")
             rodarAdmin("am broadcast -n com.geanalves.tvonline/.ConfigReceiver --es iptv '$seguro'") { out ->
                 if (out?.contains("data=\"ok\"") == true) {
-                    toast(if (link.isBlank()) "Lista tirada da TV" else "Lista enviada! Abra o TV Online na TV")
+                    toast(if (link.isBlank()) "Lista tirada da TV" else "Lista enviada! Abra o Lumi TV na TV")
                     iptvCampo.setText("")
                 } else {
-                    toast("A TV não recebeu. Ela tem o app TV Online? (Atualizar TV Online, acima)")
+                    toast("A TV não recebeu. Ela tem o app Lumi TV? (Atualizar Lumi TV, acima)")
                 }
             }
         }
@@ -1565,7 +1565,7 @@ class MainActivity : Activity() {
         col.addView(titulo("Filmes e Séries"))
         col.addView(
             textoJanela(
-                "Cole o link da lista de filmes e séries (M3U). Eles aparecem no app TV Online, em Filmes e Séries, separados sozinhos.",
+                "Cole o link da lista de filmes e séries (M3U). Eles aparecem no app Lumi TV, em Filmes e Séries, separados sozinhos.",
                 13f,
             ).apply { setPadding(dp(4), 0, 0, dp(4)) },
         )
@@ -1588,10 +1588,10 @@ class MainActivity : Activity() {
             val seguro = link.replace("'", "'\\''")
             rodarAdmin("am broadcast -n com.geanalves.tvonline/.ConfigReceiver --es vod '$seguro'") { out ->
                 if (out?.contains("data=\"ok\"") == true) {
-                    toast(if (link.isBlank()) "Lista tirada da TV" else "Lista enviada! Abra o TV Online na TV")
+                    toast(if (link.isBlank()) "Lista tirada da TV" else "Lista enviada! Abra o Lumi TV na TV")
                     vodCampo.setText("")
                 } else {
-                    toast("A TV não recebeu. Ela tem o app TV Online? (Atualizar TV Online, acima)")
+                    toast("A TV não recebeu. Ela tem o app Lumi TV? (Atualizar Lumi TV, acima)")
                 }
             }
         }
@@ -1738,7 +1738,7 @@ class MainActivity : Activity() {
                     if (n > aqui) mostrarNova(Atualizacoes.Nova(app, aqui, n, link))
                 } else if (tv.estado == Tv.Estado.CONECTADO) {
                     tv.versaoNaTv(app.pkg) { naTv ->
-                        // Só avisa de app que já está na TV (o TV Online só se você instalou)
+                        // Só avisa de app que já está na TV (o Lumi TV só se você instalou)
                         if (naTv != null && n > naTv) mostrarNova(Atualizacoes.Nova(app, naTv, n, link))
                     }
                 }

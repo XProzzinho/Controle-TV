@@ -265,7 +265,7 @@ class Tv(private val ctx: Context) {
         const val PORTA = 5555
 
         /** Última versão do Início TV no GitHub. */
-        /** Última versão do TV Online (TV ao vivo e Filmes e Séries). */
+        /** Última versão do Lumi TV (TV ao vivo e Filmes e Séries). */
         const val LINK_TVONLINE = "https://github.com/XProzzinho/TV-online/releases/latest/download/tv-online.apk"
 
         const val LINK_INICIO = "https://github.com/XProzzinho/inicio-tv./releases/latest/download/inicio-tv.apk"
