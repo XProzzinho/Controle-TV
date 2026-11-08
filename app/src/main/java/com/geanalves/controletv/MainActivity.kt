@@ -1729,8 +1729,46 @@ class MainActivity : Activity() {
         acao("Remover", "Tira da TV (dá para restaurar depois)", "pm uninstall -k --user 0 $pkg", "Remover ${Apps.nomeDoPacote(pkg)}?")
         acao("Limpar dados", "Apaga login e configurações do app", "pm clear $pkg", "Apagar os dados de ${Apps.nomeDoPacote(pkg)}?")
         acao("Forçar parada", "Fecha o app", "am force-stop $pkg")
+        box.addView(
+            opcao("Extrair APK", "Copia o app da TV para o celular (cópia de segurança)") {
+                d.dismiss()
+                fechar()
+                extrairApk(pkg)
+            },
+        )
         box.addView(opcao("Cancelar") { d.dismiss() })
         d.show()
+    }
+
+    // ---------- extrair APK da TV ----------
+
+    private var extraido: java.io.File? = null
+
+    /** Puxa o APK da TV e pergunta onde salvar no celular. */
+    private fun extrairApk(pkg: String) {
+        val nome = Apps.nomeDoPacote(pkg)
+        if (::saidaAdmin.isInitialized) saidaAdmin.append("\n» Extraindo o APK de $nome…\n")
+        toast("Extraindo $nome… pode demorar um pouco")
+        tv.extrair(pkg, java.io.File(cacheDir, "extraidos")) { f, msg ->
+            if (f == null) {
+                if (::saidaAdmin.isInitialized) saidaAdmin.append("✖ Não extraiu: $msg\n")
+                toast("Não consegui extrair: $msg")
+                return@extrair
+            }
+            extraido = f
+            if (::saidaAdmin.isInitialized) saidaAdmin.append("✔ Pronto ($msg). Escolha onde salvar.\n")
+            val limpo = nome.replace(Regex("[^\\p{L}\\p{N} ._-]"), "").trim().ifBlank { pkg }
+            val i = android.content.Intent(android.content.Intent.ACTION_CREATE_DOCUMENT).apply {
+                addCategory(android.content.Intent.CATEGORY_OPENABLE)
+                type = "application/vnd.android.package-archive"
+                putExtra(android.content.Intent.EXTRA_TITLE, limpo + "." + f.extension)
+            }
+            try {
+                startActivityForResult(i, SALVAR_APK)
+            } catch (_: Throwable) {
+                toast("Não achei o gerenciador de arquivos")
+            }
+        }
     }
 
     /** Apps removidos com "Remover" continuam guardados na TV e podem voltar. */
@@ -1936,6 +1974,25 @@ class MainActivity : Activity() {
     @Deprecated("Usado só para escolher o APK")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == SALVAR_APK) {
+            val f = extraido ?: return
+            val uri = data?.data
+            if (resultCode != RESULT_OK || uri == null) {
+                f.delete()
+                return
+            }
+            Thread {
+                val ok = try {
+                    contentResolver.openOutputStream(uri)!!.use { s -> f.inputStream().use { it.copyTo(s) } }
+                    true
+                } catch (_: Throwable) {
+                    false
+                }
+                f.delete()
+                runOnUiThread { toast(if (ok) "APK salvo no celular!" else "Não consegui salvar o arquivo") }
+            }.start()
+            return
+        }
         if (requestCode != PEDIR_APK || resultCode != RESULT_OK) return
         val uri = data?.data ?: return
         if (!::saidaAdmin.isInitialized) return
@@ -1975,5 +2032,6 @@ class MainActivity : Activity() {
 
     companion object {
         private const val PEDIR_APK = 42
+        private const val SALVAR_APK = 43
     }
 }

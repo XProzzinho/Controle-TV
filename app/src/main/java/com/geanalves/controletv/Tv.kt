@@ -149,6 +149,55 @@ class Tv(private val ctx: Context) {
     }
 
     /**
+     * Copia o APK de um app da TV para o celular (cópia de segurança).
+     * App com várias partes (split APK) vira um arquivo .apks (zip com todas as partes).
+     */
+    fun extrair(pkg: String, pasta: File, fim: (File?, String) -> Unit) {
+        fila.execute {
+            var arq: File? = null
+            var msg = ""
+            for (tentativa in 0..1) {
+                try {
+                    val d = conexao()
+                    val caminhos = d.shell("pm path $pkg").allOutput.lines()
+                        .map { it.trim() }.filter { it.startsWith("package:") }.map { it.removePrefix("package:") }
+                    if (caminhos.isEmpty()) {
+                        msg = "Não achei o APK desse app na TV"
+                        break
+                    }
+                    pasta.mkdirs()
+                    pasta.listFiles()?.forEach { it.delete() }
+                    if (caminhos.size == 1) {
+                        val f = File(pasta, "$pkg.apk")
+                        d.pull(f, caminhos[0])
+                        arq = f
+                    } else {
+                        val zip = File(pasta, "$pkg.apks")
+                        java.util.zip.ZipOutputStream(zip.outputStream()).use { z ->
+                            for (c in caminhos) {
+                                val parte = File(pasta, "parte.apk")
+                                d.pull(parte, c)
+                                z.putNextEntry(java.util.zip.ZipEntry(c.substringAfterLast('/')))
+                                parte.inputStream().use { it.copyTo(z) }
+                                z.closeEntry()
+                                parte.delete()
+                            }
+                        }
+                        arq = zip
+                    }
+                    msg = "${caminhos.size} arquivo(s)"
+                    break
+                } catch (t: Throwable) {
+                    msg = t.message ?: t.toString()
+                    if (t is java.io.IOException) fechar() else break
+                }
+            }
+            val f = arq
+            main.post { fim(f, msg) }
+        }
+    }
+
+    /**
      * Busca os ícones de verdade dos apps na TV (o Início TV salva, o celular copia).
      * Devolve pacote -> "b" (banner largo) ou "i" (ícone quadrado); null se não deu.
      */
