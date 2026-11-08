@@ -71,7 +71,12 @@ class Prefs(ctx: Context) {
         }.toMap()
         set(v) = sp.edit().putStringSet("extras", v.map { "${it.key}|${it.value}" }.toSet()).apply()
 
-    /** Apps conhecidos que o usuário escondeu (segurando o botão). */
+    /** Chave do GitHub (token) para os ajustes de "Meus apps". */
+    var github: String?
+        get() = sp.getString("github", null)
+        set(v) = sp.edit().putString("github", v).apply()
+
+        /** Apps conhecidos que o usuário escondeu (segurando o botão). */
     var escondidos: Set<String>
         get() = sp.getStringSet("escondidos", emptySet())!!
         set(v) = sp.edit().putStringSet("escondidos", v).apply()

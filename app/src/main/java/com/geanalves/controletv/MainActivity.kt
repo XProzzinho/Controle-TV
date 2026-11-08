@@ -1409,6 +1409,10 @@ class MainActivity : Activity() {
         col.addView(opcao("Apps desativados", "Ver e reativar o que foi desligado") { gerenciarApps(true) })
         col.addView(opcao("Restaurar app removido", "Trazer de volta um app que você removeu") { restaurarApps() })
 
+        // Meus apps: ajustes sem código (nome e ícone) pelo GitHub
+        col.addView(titulo("Meus apps"))
+        col.addView(opcao("Ajustar meus apps", "Trocar o nome e o ícone do Início TV, Lumi TV ou Controle TV") { meusApps() })
+
         // Comandos prontos
         col.addView(titulo("Comandos prontos"))
         col.addView(opcao("Fixar Início TV", "Tela inicial principal, mesmo depois de reiniciar") {
@@ -1740,6 +1744,152 @@ class MainActivity : Activity() {
         d.show()
     }
 
+    // ---------- meus apps: nome e ícone sem mexer no código ----------
+
+    private var iconeNovo: ByteArray? = null
+    private var iconeRotulo: TextView? = null
+
+    private fun meusApps() {
+        val (d, box) = janela()
+        iconeNovo = null
+        box.addView(textoJanela("Ajustar meus apps", 22f, Cores.tinta, negrito = true))
+        box.addView(
+            textoJanela(
+                "Escolha o app, mude o nome e/ou o ícone e toque em Aplicar. O GitHub gera a versão nova em uns 3 minutos " +
+                    "e o controle avisa para atualizar.",
+            ),
+        )
+        fun campo(dica: String, valor: String?, senha: Boolean = false) = EditText(this).apply {
+            hint = dica
+            setText(valor ?: "")
+            textSize = 15f
+            setTextColor(Cores.tinta)
+            setHintTextColor(Cores.cinza)
+            background = rounded(Cores.campo, 16)
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            isSingleLine = true
+            inputType = if (senha) InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD else InputType.TYPE_CLASS_TEXT
+        }
+
+        box.addView(textoJanela("Chave do GitHub (só na primeira vez)", 14f, Cores.tinta, negrito = true).apply { setPadding(0, dp(10), 0, dp(4)) })
+        val token = campo("github_pat_…", prefs.github, senha = true)
+        box.addView(token, LinearLayout.LayoutParams(-1, -2))
+        box.addView(
+            textoJanela(
+                "No GitHub: Settings › Developer settings › Fine-grained tokens › Generate. Dê acesso aos 3 repositórios, " +
+                    "com Contents e Actions em \"Read and write\". Fica guardada só neste celular.",
+                12f,
+            ).apply { setPadding(dp(4), dp(4), 0, 0) },
+        )
+
+        box.addView(textoJanela("Qual app", 14f, Cores.tinta, negrito = true).apply { setPadding(0, dp(14), 0, dp(4)) })
+        var escolhido = Atualizacoes.APPS[0]
+        val apps = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val chips = ArrayList<TextView>()
+        fun pintar() = chips.forEach { c ->
+            val on = c.tag == escolhido
+            c.background = rounded(if (on) Cores.tinta else Cores.campo, 18)
+            c.setTextColor(if (on) Cores.papel else Cores.tinta)
+        }
+        for (a in Atualizacoes.APPS) {
+            val c = TextView(this).apply {
+                text = a.nome
+                tag = a
+                textSize = 14f
+                setPadding(dp(14), dp(8), dp(14), dp(8))
+                setOnClickListener {
+                    escolhido = a
+                    pintar()
+                }
+            }
+            chips += c
+            apps.addView(c, LinearLayout.LayoutParams(-2, -2).apply { rightMargin = dp(8) })
+        }
+        pintar()
+        box.addView(apps)
+
+        box.addView(textoJanela("Nome novo (vazio = não muda)", 14f, Cores.tinta, negrito = true).apply { setPadding(0, dp(14), 0, dp(4)) })
+        val nome = campo("Ex.: Minha TV", null)
+        box.addView(nome, LinearLayout.LayoutParams(-1, -2))
+
+        val rot = textoJanela("Ícone: sem mudança")
+        iconeRotulo = rot
+        box.addView(rot.apply { setPadding(dp(4), dp(14), 0, dp(2)) })
+        box.addView(opcao("Escolher ícone da galeria", "Uma imagem quadrada fica melhor") {
+            val i = android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(android.content.Intent.CATEGORY_OPENABLE)
+                type = "image/*"
+            }
+            try {
+                startActivityForResult(i, PEDIR_ICONE)
+            } catch (_: Throwable) {
+                toast("Não achei a galeria")
+            }
+        })
+
+        var enviando = false
+        box.addView(opcao("Aplicar", "Salva no GitHub e gera o APK novo", escuro = true) {
+            if (enviando) return@opcao
+            val t = token.text.toString().trim()
+            val n = nome.text.toString().trim()
+            if (t.isBlank()) {
+                toast("Cole a chave do GitHub")
+                return@opcao
+            }
+            if (n.isBlank() && iconeNovo == null) {
+                toast("Mude o nome ou escolha um ícone")
+                return@opcao
+            }
+            prefs.github = t
+            enviando = true
+            toast("Mandando para o GitHub…")
+            MeusApps.aplicar(t, escolhido.repo, n, iconeNovo) { erro ->
+                enviando = false
+                if (erro == null) {
+                    toast("Pronto! ${escolhido.nome} novo em uns 3 minutos")
+                    if (::saidaAdmin.isInitialized) saidaAdmin.append("\n✔ Ajustes do ${escolhido.nome} enviados. O APK novo sai em uns 3 minutos.\n")
+                    d.dismiss()
+                } else {
+                    android.widget.Toast.makeText(this, erro, android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
+        })
+        box.addView(opcao("Cancelar") { d.dismiss() })
+        d.setOnDismissListener {
+            iconeRotulo = null
+            iconeNovo = null
+        }
+        d.show()
+    }
+
+    /** Reduz a imagem escolhida para um PNG quadrado de 512px. */
+    private fun prepararIcone(uri: android.net.Uri) {
+        Thread {
+            val png = try {
+                val bytes = contentResolver.openInputStream(uri)!!.use { it.readBytes() }
+                val o = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, o)
+                var amostra = 1
+                while (o.outWidth / (amostra * 2) >= 512 && o.outHeight / (amostra * 2) >= 512) amostra *= 2
+                val b = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, android.graphics.BitmapFactory.Options().apply { inSampleSize = amostra })!!
+                val lado = minOf(b.width, b.height)
+                val quad = android.graphics.Bitmap.createBitmap(b, (b.width - lado) / 2, (b.height - lado) / 2, lado, lado)
+                val fin = android.graphics.Bitmap.createScaledBitmap(quad, 512, 512, true)
+                java.io.ByteArrayOutputStream().also { fin.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
+            } catch (_: Throwable) {
+                null
+            }
+            runOnUiThread {
+                if (png == null) {
+                    toast("Não consegui abrir essa imagem")
+                } else {
+                    iconeNovo = png
+                    iconeRotulo?.text = "Ícone: imagem escolhida ✔"
+                }
+            }
+        }.start()
+    }
+
     // ---------- extrair APK da TV ----------
 
     private var extraido: java.io.File? = null
@@ -1974,6 +2124,11 @@ class MainActivity : Activity() {
     @Deprecated("Usado só para escolher o APK")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == PEDIR_ICONE) {
+            val uri = data?.data
+            if (resultCode == RESULT_OK && uri != null) prepararIcone(uri)
+            return
+        }
         if (requestCode == SALVAR_APK) {
             val f = extraido ?: return
             val uri = data?.data
@@ -2033,5 +2188,6 @@ class MainActivity : Activity() {
     companion object {
         private const val PEDIR_APK = 42
         private const val SALVAR_APK = 43
+        private const val PEDIR_ICONE = 44
     }
 }
