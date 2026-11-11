@@ -2,6 +2,7 @@
 window.$ = id => document.getElementById(id);
 const DONO = 'geansdp2@gmail.com';
 firebase.initializeApp(window.FIREBASE_CONFIG);
+try { localStorage.setItem('ultimo-email', localStorage.getItem('ultimo-email') || ''); } catch (e) {}
 const auth = firebase.auth(), db = firebase.firestore();
 let EU = null, CFG = { maxMin: 1440, maxPct: 50, perm: false }, bTipo = 'forca', bDur = 30;
 
@@ -10,7 +11,11 @@ function msg(id, t, erro) { const e = $(id); e.textContent = t || ''; e.classNam
 const souAdm = () => EU && EU.cargo === 'adm';
 
 // ---------- login ----------
-$('lg-entrar').onclick = async () => { msg('lg-msg', 'Entrando...'); try { await auth.signInWithEmailAndPassword($('lg-email').value.trim(), $('lg-senha').value); } catch (e) { msg('lg-msg', e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password' ? 'E-mail ou senha errados.' : 'Não deu pra entrar: ' + (e.code || e.message), true); } };
+const ERROS = { 'auth/invalid-credential': 'E-mail ou senha errados.', 'auth/wrong-password': 'Senha errada.', 'auth/user-not-found': 'Não existe conta com esse e-mail.', 'auth/invalid-email': 'E-mail inválido.', 'auth/too-many-requests': 'Muitas tentativas. Espere uns minutos ou use "Esqueci a senha".', 'auth/network-request-failed': 'Sem internet ou conexão bloqueada.', 'auth/missing-password': 'Digite a senha.', 'auth/user-disabled': 'Essa conta foi desativada.' };
+const erroTxt = e => (ERROS[e.code] || 'Não deu: ' + (e.code || e.message)) + (e.code && !ERROS[e.code] ? '' : '');
+$('lg-entrar').onclick = async () => { const em = $('lg-email').value.trim(), se = $('lg-senha').value; if (!em || !se) { msg('lg-msg', 'Preencha o e-mail e a senha.', true); return; } msg('lg-msg', 'Entrando...'); try { await auth.signInWithEmailAndPassword(em, se); } catch (e) { msg('lg-msg', erroTxt(e) + ' (' + (e.code || '') + ')', true); } };
+$('lg-olho').onclick = () => { const i = $('lg-senha'); i.type = i.type === 'password' ? 'text' : 'password'; };
+$('lg-esqueci').onclick = async () => { const em = $('lg-email').value.trim(); if (!em) { msg('lg-msg', 'Digite seu e-mail primeiro e toque de novo.', true); return; } try { await auth.sendPasswordResetEmail(em); msg('lg-msg', 'Mandei um link pra ' + em + '. Abra o e-mail (olhe no spam), crie a senha nova e entre aqui.'); } catch (e) { msg('lg-msg', erroTxt(e), true); } };
 $('lg-senha').onkeydown = e => { if (e.key === 'Enter') $('lg-entrar').click(); };
 $('sair').onclick = () => auth.signOut();
 auth.onAuthStateChanged(async u => {
