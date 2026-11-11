@@ -1,18 +1,10 @@
-# Controle TV
+# Painel ADM (Brumafria)
 
-Controle remoto da TV pelo celular, com as mesmas cores do **Início TV** (claro, ou escuro pela lua).
+App Android do **GM Control System / Admin Buff Panel** do jogo Brumafria (repositório JOGO).
+GMs e ADMs entram com a conta do jogo e aplicam buffs nos jogadores em tempo real.
 
-Funciona pelo Wi-Fi usando a depuração ADB da TV — serve para a TV TCL (Android TV) e para a Fire TV Stick, sem instalar nada na TV.
+- `app/src/main/assets/index.html`, `css/admin.css`, `js/admin.js`, `js/buffs.js`, `js/jogadores.js`: o painel (HTML + CSS + JS).
+- Dados no Firestore do jogo: `perfis`, `buffs`, `buffLog`, `staff`, `config`. As regras de segurança ficam no repositório JOGO (`firestore.rules`).
+- O APK sai sozinho no GitHub Actions a cada push (Releases → `painel-adm.apk`).
 
-- Setas e OK (segurar repete), Voltar, Início, Menu, Play/Pause
-- Volume +/−, mudo e botão de ligar/desligar
-- Digitar na TV pelo teclado do celular
-- Atalhos para abrir apps (Netflix, YouTube, Prime Video, Globoplay…) e botão **+** para colocar outros
-- Procura a TV sozinho na rede
-
-## Como usar
-1. Na TV, ligue a depuração (Fire TV: *Opções do desenvolvedor › Depuração ADB*; TCL: *Opções do desenvolvedor › Depuração USB*).
-2. Instale o APK da última versão em **Releases**.
-3. Abra o app, toque na sua TV e aceite o aviso que aparece na tela da TV.
-
-Cada envio para `main` gera um APK novo automaticamente (GitHub Actions).
+Este repositório era o app "Controle TV"; o código antigo continua no histórico do Git.

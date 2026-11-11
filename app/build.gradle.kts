@@ -53,6 +53,6 @@ android {
 }
 
 dependencies {
-    // Fala com a TV pelo Wi-Fi usando a depuração ADB (igual ao computador faria)
-    implementation("dev.mobile:dadb:1.2.10")
+    // Abre as páginas da pasta assets com endereço https (o Firebase precisa disso)
+    implementation("androidx.webkit:webkit:1.8.0")
 }

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Painel ADM · Brumafria</title>
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+<!-- ===== Login ===== -->
+<section id="login" class="tela">
+  <div class="marca"><small>GM CONTROL SYSTEM</small><h1>ADMIN BUFF PANEL</h1><p>Sistema administrativo de personagens · Jogo 3D</p></div>
+  <div class="cartao">
+    <label>E-mail da conta do jogo<input id="lg-email" type="email" autocomplete="username" placeholder="voce@email.com"></label>
+    <label>Senha<input id="lg-senha" type="password" autocomplete="current-password" placeholder="••••••"></label>
+    <button id="lg-entrar" class="bt pri">Entrar</button>
+    <p id="lg-msg" class="msg"></p>
+  </div>
+  <p class="nota">Só contas de <b>GM</b> e <b>ADM</b> entram. Use o mesmo e-mail e senha do jogo.</p>
+</section>
+
+<!-- ===== Painel ===== -->
+<section id="painel" class="tela" hidden>
+  <header class="topo">
+    <div><small>GM CONTROL SYSTEM</small><h1>ADMIN BUFF PANEL</h1></div>
+    <div class="eu"><span id="eu-cargo" class="tag">ADM</span><b id="eu-nome">—</b><button id="sair" class="bt mini">Sair</button></div>
+  </header>
+  <nav class="abas">
+    <button data-a="jog" class="on"><i>👥</i><b>Jogadores</b><small>Selecionar personagem</small></button>
+    <button data-a="buf"><i>⚡</i><b>Buffs</b><small>Aplicar poderes</small></button>
+    <button data-a="per"><i>🛡️</i><b>Permissões</b><small>GM e ADM</small></button>
+    <button data-a="his"><i>📜</i><b>Histórico</b><small>Registro de ações</small></button>
+  </nav>
+
+  <div id="a-jog" class="aba">
+    <div class="busca"><input id="j-busca" placeholder="Buscar por nome ou ID (código)"><button id="j-atualiza" class="bt mini">↻</button></div>
+    <div class="chips"><button data-f="todos" class="on">Todos</button><button data-f="online">🟢 Online</button><button data-f="buff">⚡ Com buff</button></div>
+    <div class="acoes"><button id="j-sel-on" class="bt mini">Selecionar online</button><button id="j-sel-nada" class="bt mini">Limpar seleção</button><span id="j-conta"></span></div>
+    <div id="j-lista" class="lista"></div>
+  </div>
+
+  <div id="a-buf" class="aba" hidden>
+    <h3>1. Escolha o buff</h3>
+    <div id="b-grade" class="grade"></div>
+    <h3>2. Intensidade <span id="b-pct-v">50%</span></h3>
+    <input id="b-pct" type="range" min="10" max="100" step="10" value="50">
+    <label id="b-imune-l" class="troca" hidden><input id="b-imune" type="checkbox"> Imunidade (não leva dano nenhum)</label>
+    <h3>3. Duração</h3>
+    <div id="b-dur" class="chips"></div>
+    <label id="b-min-l" class="busca" hidden><input id="b-min" type="number" min="1" placeholder="Minutos"></label>
+    <p id="b-lim" class="nota"></p>
+    <h3>4. Aplicar</h3>
+    <p id="b-resumo" class="resumo"></p>
+    <button id="b-aplicar" class="bt pri">Aplicar buff</button>
+    <button id="b-remover" class="bt perigo">Remover todos os buffs dos selecionados</button>
+  </div>
+
+  <div id="a-per" class="aba" hidden>
+    <div id="p-adm">
+      <h3>Equipe</h3>
+      <div class="busca"><input id="p-cod" placeholder="Código do jogador (ex.: A1B2C3)" maxlength="6"><select id="p-cargo"><option value="gm">GM</option><option value="adm">ADM</option></select><button id="p-add" class="bt mini pri">Adicionar</button></div>
+      <p id="p-msg" class="msg"></p>
+      <div id="p-lista" class="lista"></div>
+      <h3>Limites do GM</h3>
+      <label class="linha">Duração máxima (minutos)<input id="c-min" type="number" min="5"></label>
+      <label class="linha">Intensidade máxima (%)<input id="c-pct" type="number" min="10" max="100" step="10"></label>
+      <label class="troca"><input id="c-perm" type="checkbox"> GM pode dar buff permanente</label>
+      <button id="c-salva" class="bt pri">Salvar limites</button>
+    </div>
+    <div id="p-gm" hidden>
+      <h3>Seu cargo: GM</h3>
+      <ul class="regras"><li>Aplicar buffs nos jogadores.</li><li>Ajudar jogadores com dificuldades.</li><li>Remover buffs e efeitos.</li><li>Consultar atributos.</li></ul>
+      <p id="p-gm-lim" class="nota"></p>
+    </div>
+  </div>
+
+  <div id="a-his" class="aba" hidden>
+    <div class="acoes"><button id="h-atualiza" class="bt mini">↻ Atualizar</button></div>
+    <div id="h-lista" class="lista"></div>
+  </div>
+
+  <div id="barra-sel"><span id="bs-txt">Nenhum selecionado</span><button id="bs-ir" class="bt pri mini">Aplicar buff ›</button></div>
+</section>
+
+<!-- ficha do jogador -->
+<div id="ficha" class="fundo" hidden><div class="folha"><button id="f-fecha" class="x">✕</button><div id="f-corpo"></div></div></div>
+<div id="toast"></div>
+
+<script src="firebase/firebase-app-compat.js"></script>
+<script src="firebase/firebase-auth-compat.js"></script>
+<script src="firebase/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/buffs.js"></script>
+<script src="js/jogadores.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

@@ -23,6 +23,11 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      - name: Baixar o Firebase (login e banco do jogo)
+        run: |
+          mkdir -p app/src/main/assets/firebase
+          for f in firebase-app-compat.js firebase-auth-compat.js firebase-firestore-compat.js; do curl -fsSL "https://cdn.jsdelivr.net/npm/firebase@10.12.2/$f" -o "app/src/main/assets/firebase/$f"; done
+
       - name: Compilar
         run: |
           set -o pipefail
@@ -32,12 +37,12 @@ jobs:
           }
 
       - name: Renomear APK
-        run: cp app/build/outputs/apk/release/app-release.apk controle-tv.apk
+        run: cp app/build/outputs/apk/release/app-release.apk painel-adm.apk
 
       - name: Publicar versão
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.${{ github.run_number }}
-          name: Controle TV v1.${{ github.run_number }}
+          name: Painel ADM v1.${{ github.run_number }}
           make_latest: "true"
-          files: controle-tv.apk
+          files: painel-adm.apk
