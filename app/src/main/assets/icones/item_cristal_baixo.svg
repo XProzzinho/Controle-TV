@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><radialGradient id="gcristal_baixo"><stop offset="0" stop-color="#5aff7a" stop-opacity=".8"/><stop offset="1" stop-color="#5aff7a" stop-opacity="0"/></radialGradient><linearGradient id="acristal_baixo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b8ffb0"/><stop offset="1" stop-color="#3ac85a"/></linearGradient></defs>
+<circle cx="32" cy="34" r="30" fill="url(#gcristal_baixo)"/>
+<path d="M32 4L46 20L42 50L32 60L22 50L18 20Z" fill="url(#acristal_baixo)" stroke="#2b2340" stroke-width="3" stroke-linejoin="round"/>
+<path d="M32 4L32 60M18 20L32 28L46 20M22 50L32 28L42 50" fill="none" stroke="#2b2340" stroke-width="1.6" opacity=".55"/>
+<path d="M32 4L18 20L32 28Z" fill="#fff" opacity=".45"/><path d="M32 28L22 50L32 60Z" fill="#1a8a3a" opacity=".6"/>
+<path d="M12 36L18 30L20 46L14 50Z" fill="url(#acristal_baixo)" stroke="#2b2340" stroke-width="2.5" stroke-linejoin="round"/><path d="M52 36L46 30L44 46L50 50Z" fill="url(#acristal_baixo)" stroke="#2b2340" stroke-width="2.5" stroke-linejoin="round"/>
+<path d="M48 5l1.5 3.5 3.5 1.5 -3.5 1.5 -1.5 3.5 -1.5 -3.5 -3.5 -1.5 3.5 -1.5z" fill="#fff"/></svg>
