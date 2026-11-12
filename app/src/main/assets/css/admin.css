@@ -56,3 +56,8 @@ input[type=range]{width:100%;padding:0;accent-color:var(--ciano);background:none
 .icard img{width:46px;height:46px;object-fit:contain}.icard .em{font-size:32px}.icard b{font-size:11px;line-height:1.15}.icard small{font-size:9px;color:var(--fraco)}
 .icard.on{border-color:#ff8aff;box-shadow:0 0 0 1px #ff8aff inset;background:#2a1838}
 #a-ite .bt{width:100%}
+
+.passo{margin:12px 0 4px;font-size:13px;color:var(--ciano);letter-spacing:.3px}
+.ijog{display:flex;gap:6px;overflow-x:auto;padding:4px 0 8px}.ijog button{flex:none;background:var(--cartao);color:var(--texto);border:1px solid var(--linha);border-radius:14px;padding:7px 11px;font:inherit;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px}
+.ijog button i{width:8px;height:8px;border-radius:50%;background:#666;font-style:normal}.ijog button i.on{background:#22c55e}.ijog button.on{background:#2a1838;border-color:#ff8aff;color:#fff}
+#i-msg{width:100%;box-sizing:border-box;background:var(--cartao);color:var(--texto);border:1px solid var(--linha);border-radius:12px;padding:9px;font:inherit;font-size:14px;resize:vertical;margin-bottom:8px}
