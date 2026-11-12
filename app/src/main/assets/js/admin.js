@@ -72,15 +72,17 @@ $('b-aplicar').onclick = async () => { const min = minutos(), pct = +$('b-pct').
   const item = { tipo: bTipo, pct, ate: min ? Date.now() + min * 60000 : 0, imune: bTipo === 'divino' && $('b-imune').checked, por: EU.uid, porNome: EU.nome, criado: Date.now() };
   $('b-aplicar').disabled = true; let ok = 0;
   for (const uid of J.sel) { try { const ref = db.collection('buffs').doc(uid);
-      await db.runTransaction(async t => { const d = await t.get(ref); const L = ativos(d.exists ? d.data().lista : []).filter(b => b.tipo !== item.tipo); L.push(Object.assign({ id: Math.random().toString(36).slice(2, 10) }, item)); t.set(ref, { lista: L, nome: J.nome(uid), mudou: Date.now() }); });
+      await db.runTransaction(async t => { const d = await t.get(ref); const L = ativos(d.exists ? d.data().lista : []).filter(b => b.tipo !== item.tipo); L.push(Object.assign({ id: Math.random().toString(36).slice(2, 10) }, item)); t.set(ref, { lista: L, nome: J.nome(uid), mudou: Date.now() }, { merge: true }); });
       J.buffs[uid] = (J.buffs[uid] || []).filter(b => b.tipo !== item.tipo).concat([item]); await log('aplicar', uid, { tipo: item.tipo, pct, min }); ok++; } catch (e) { toast('Erro em ' + J.nome(uid) + ': ' + (e.code || e.message), '#ef4444'); } }
   if (ok) toast(BUFFS[item.tipo].nome + ' aplicado em ' + ok + ' jogador(es)!', BUFFS[item.tipo].cor); J.carrega(); resumo(); };
 async function removeBuffs(uids, id) { let ok = 0;
   for (const uid of uids) { try { const ref = db.collection('buffs').doc(uid); let tirou = null;
-      await db.runTransaction(async t => { const d = await t.get(ref); const L0 = ativos(d.exists ? d.data().lista : []); tirou = id ? L0.find(b => b.id === id) : null; const L = id ? L0.filter(b => b.id !== id) : []; t.set(ref, { lista: L, nome: J.nome(uid), mudou: Date.now() }); });
+      await db.runTransaction(async t => { const d = await t.get(ref); const L0 = ativos(d.exists ? d.data().lista : []); tirou = id ? L0.find(b => b.id === id) : null; const L = id ? L0.filter(b => b.id !== id) : []; t.set(ref, { lista: L, nome: J.nome(uid), mudou: Date.now() }, { merge: true }); });
       await log(id ? 'remover' : 'limpar', uid, tirou ? { tipo: tirou.tipo } : {}); ok++; } catch (e) { toast('Erro: ' + (e.code || e.message), '#ef4444'); } }
   if (ok) toast(id ? 'Buff removido.' : 'Buffs removidos de ' + ok + ' jogador(es).', '#f59e0b'); await J.carrega(); }
 window.removeBuffs = removeBuffs;
+async function vooMuda(uid, on) { try { await db.collection('buffs').doc(uid).set({ voo: on, nome: J.nome(uid), mudou: Date.now() }, { merge: true }); J.voo[uid] = on; await log(on ? 'voo-libera' : 'voo-bloqueia', uid); toast((on ? '🪽 Voo liberado pra ' : '🔒 Voo bloqueado pra ') + J.nome(uid), on ? '#22c55e' : '#f59e0b'); } catch (e) { toast('Erro: ' + (e.code || e.message), '#ef4444'); } }
+window.vooMuda = vooMuda;
 $('b-remover').onclick = () => { if (confirm('Remover TODOS os buffs de ' + J.sel.size + ' jogador(es)?')) removeBuffs([...J.sel]); };
 
 // ---------- permissões ----------
@@ -100,7 +102,7 @@ $('c-salva').onclick = async () => { CFG = { maxMin: Math.max(5, +$('c-min').val
   try { await db.collection('config').doc('gm').set(CFG); toast('Limites salvos.'); } catch (e) { toast('Erro: ' + (e.code || e.message), '#ef4444'); } };
 
 // ---------- histórico ----------
-const ACAO = { aplicar: 'aplicou', remover: 'removeu', limpar: 'removeu todos os buffs de', 'equipe-entra': 'colocou na equipe', 'equipe-sai': 'tirou da equipe' };
+const ACAO = { 'voo-libera': 'liberou o voo de', 'voo-bloqueia': 'bloqueou o voo de', aplicar: 'aplicou', remover: 'removeu', limpar: 'removeu todos os buffs de', 'equipe-entra': 'colocou na equipe', 'equipe-sai': 'tirou da equipe' };
 async function historico() { const L = $('h-lista'); L.innerHTML = '<p class="vazio">Carregando...</p>';
   try { const s = await db.collection('buffLog').orderBy('criado', 'desc').limit(100).get(); L.innerHTML = s.empty ? '<p class="vazio">Nada registrado ainda.</p>' : '';
     s.forEach(d => { const x = d.data(), B = BUFFS[x.tipo]; const e = document.createElement('div'); e.className = 'hist'; const q = new Date(x.criado);
