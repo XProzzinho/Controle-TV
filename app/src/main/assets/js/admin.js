@@ -25,7 +25,7 @@ auth.onAuthStateChanged(async u => {
   try { const s = await db.collection('staff').doc(u.uid).get(); if (s.exists) { cargo = cargo || s.data().cargo; nome = s.data().nome || nome; } } catch (e) {}
   try { const p = await db.collection('perfis').doc(u.uid).get(); if (p.exists && p.data().nome) nome = p.data().nome; } catch (e) {}
   if (cargo !== 'adm' && cargo !== 'gm') { msg('lg-msg', 'Essa conta não é GM nem ADM. Peça pro administrador te adicionar.', true); auth.signOut(); return; }
-  EU = { uid: u.uid, nome, cargo }; msg('lg-msg', '');
+  EU = { uid: u.uid, nome, cargo }; window.EU_NOME = nome; window.EU_CARGO = cargo; msg('lg-msg', '');
   $('eu-nome').textContent = nome; $('eu-cargo').textContent = cargo.toUpperCase(); $('eu-cargo').className = 'tag ' + cargo;
   $('login').hidden = true; $('painel').hidden = false;
   try { const c = await db.collection('config').doc('gm').get(); if (c.exists) CFG = Object.assign(CFG, c.data()); } catch (e) {}
@@ -34,10 +34,10 @@ auth.onAuthStateChanged(async u => {
 
 // ---------- abas ----------
 document.querySelectorAll('.abas button').forEach(b => b.onclick = () => abre(b.dataset.a));
-function abre(a) { document.querySelectorAll('.abas button').forEach(b => b.classList.toggle('on', b.dataset.a === a)); ['jog', 'buf', 'per', 'his'].forEach(k => $('a-' + k).hidden = k !== a);
-  $('barra-sel').hidden = a === 'per' || a === 'his'; if (a === 'per') montaPerm(); if (a === 'his') historico(); if (a === 'buf') resumo(); }
+function abre(a) { document.querySelectorAll('.abas button').forEach(b => b.classList.toggle('on', b.dataset.a === a)); ['jog', 'buf', 'per', 'his', 'ite'].forEach(k => $('a-' + k).hidden = k !== a);
+  $('barra-sel').hidden = a === 'per' || a === 'his'; if (a === 'per') montaPerm(); if (a === 'his') historico(); if (a === 'buf') resumo(); if (a === 'ite') itensDesenha(); }
 window.abre = abre;
-function barraSel() { const n = J.sel.size; $('bs-txt').textContent = n ? n + ' jogador(es) selecionado(s)' : 'Nenhum selecionado'; $('bs-ir').disabled = !n; resumo(); }
+function barraSel() { const n = J.sel.size; $('bs-txt').textContent = n ? n + ' jogador(es) selecionado(s)' : 'Nenhum selecionado'; $('bs-ir').disabled = !n; resumo(); if (window.itensResumo) itensResumo(); }
 window.barraSel = barraSel;
 $('bs-ir').onclick = () => abre('buf');
 window.fechaFicha = () => { $('ficha').hidden = true; };
@@ -102,11 +102,11 @@ $('c-salva').onclick = async () => { CFG = { maxMin: Math.max(5, +$('c-min').val
   try { await db.collection('config').doc('gm').set(CFG); toast('Limites salvos.'); } catch (e) { toast('Erro: ' + (e.code || e.message), '#ef4444'); } };
 
 // ---------- histórico ----------
-const ACAO = { 'voo-libera': 'liberou o voo de', 'voo-bloqueia': 'bloqueou o voo de', aplicar: 'aplicou', remover: 'removeu', limpar: 'removeu todos os buffs de', 'equipe-entra': 'colocou na equipe', 'equipe-sai': 'tirou da equipe' };
+const ACAO = { item: 'deu', 'voo-libera': 'liberou o voo de', 'voo-bloqueia': 'bloqueou o voo de', aplicar: 'aplicou', remover: 'removeu', limpar: 'removeu todos os buffs de', 'equipe-entra': 'colocou na equipe', 'equipe-sai': 'tirou da equipe' };
 async function historico() { const L = $('h-lista'); L.innerHTML = '<p class="vazio">Carregando...</p>';
   try { const s = await db.collection('buffLog').orderBy('criado', 'desc').limit(100).get(); L.innerHTML = s.empty ? '<p class="vazio">Nada registrado ainda.</p>' : '';
     s.forEach(d => { const x = d.data(), B = BUFFS[x.tipo]; const e = document.createElement('div'); e.className = 'hist'; const q = new Date(x.criado);
-      e.innerHTML = `${B ? ic(x.tipo) : '<span class="ico">🛡️</span>'}<div class="tx"><b>${J.esc(x.porNome)} <em>(${(x.cargo || '').toUpperCase()})</em> ${ACAO[x.acao] || x.acao} ${B && x.acao !== 'limpar' ? '<i style="color:' + B.cor + '">' + B.nome + '</i> ' + (x.acao === 'aplicar' ? (x.pct + '% · ' + durTxt(x.min)) + ' em ' : 'de ') : x.cargo && x.acao.startsWith('equipe') ? '' : ''}${J.esc(x.alvoNome || '')}</b><small>${q.toLocaleDateString('pt-BR')} ${q.toLocaleTimeString('pt-BR').slice(0, 5)}</small></div>`; L.appendChild(e); });
+      e.innerHTML = `${B ? ic(x.tipo) : '<span class="ico">🛡️</span>'}<div class="tx"><b>${J.esc(x.porNome)} <em>(${(x.cargo || '').toUpperCase()})</em> ${ACAO[x.acao] || x.acao} ${x.acao === 'item' ? '<i style="color:#ff8aff">' + J.esc(x.itemNome || '') + '</i> pra ' : ''}${B && x.acao !== 'limpar' ? '<i style="color:' + B.cor + '">' + B.nome + '</i> ' + (x.acao === 'aplicar' ? (x.pct + '% · ' + durTxt(x.min)) + ' em ' : 'de ') : x.cargo && x.acao.startsWith('equipe') ? '' : ''}${J.esc(x.alvoNome || '')}</b><small>${q.toLocaleDateString('pt-BR')} ${q.toLocaleTimeString('pt-BR').slice(0, 5)}</small></div>`; L.appendChild(e); });
   } catch (e) { L.innerHTML = '<p class="vazio">Erro: ' + (e.code || e.message) + '</p>'; } }
 $('h-atualiza').onclick = historico;
 setInterval(() => { if (EU && !$('a-jog').hidden && $('ficha').hidden) J.desenha(); }, 30000);

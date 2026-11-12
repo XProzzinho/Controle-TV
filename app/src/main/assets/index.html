@@ -31,6 +31,7 @@
     <button data-a="buf"><i>⚡</i><b>Buffs</b><small>Aplicar poderes</small></button>
     <button data-a="per"><i>🛡️</i><b>Permissões</b><small>GM e ADM</small></button>
     <button data-a="his"><i>📜</i><b>Histórico</b><small>Registro de ações</small></button>
+    <button data-a="ite" class="largo"><i>🎁</i><b>Itens</b><small>Dar armas, roupas, montarias, moedas...</small></button>
   </nav>
 
   <div id="a-jog" class="aba">
@@ -80,6 +81,15 @@
     <div id="h-lista" class="lista"></div>
   </div>
 
+  <div id="a-ite" class="aba" hidden>
+    <div class="chips" id="i-cats"></div>
+    <div class="busca"><input id="i-busca" placeholder="Buscar item"></div>
+    <div id="i-grade" class="igrade"></div>
+    <div id="i-qtd-l" class="linha" hidden>Quantidade<input id="i-qtd" type="number" min="1" value="1"></div>
+    <p id="i-resumo" class="resumo"></p>
+    <button id="i-dar" class="bt pri">Dar para os selecionados</button>
+  </div>
+
   <div id="barra-sel"><span id="bs-txt">Nenhum selecionado</span><button id="bs-ir" class="bt pri mini">Aplicar buff ›</button></div>
 </section>
 
@@ -91,7 +101,9 @@
 <script src="firebase/firebase-auth-compat.js"></script>
 <script src="firebase/firebase-firestore-compat.js"></script>
 <script src="js/firebase-config.js"></script>
+<script src="js/catalogo.js"></script>
 <script src="js/buffs.js"></script>
+<script src="js/itens.js"></script>
 <script src="js/jogadores.js"></script>
 <script src="js/admin.js"></script>
 </body>

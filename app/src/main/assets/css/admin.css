@@ -50,3 +50,9 @@ input[type=range]{width:100%;padding:0;accent-color:var(--ciano);background:none
 #toast{position:fixed;left:50%;bottom:80px;transform:translate(-50%,30px);opacity:0;background:var(--cartao2);border:1px solid var(--ciano);padding:10px 16px;border-radius:12px;font-weight:700;font-size:13px;transition:.25s;z-index:30;max-width:90vw;text-align:center}#toast.on{opacity:1;transform:translate(-50%,0)}
 #lg-esqueci{align-self:center;background:none;border:0;color:var(--ciano);text-decoration:underline}
 .bf .voo{font-size:18px}.vooT{background:var(--cartao2);border:1px solid var(--linha);border-radius:12px;padding:10px;margin-top:12px}
+.abas .largo{grid-column:1/-1}
+.igrade{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0;max-height:46vh;overflow:auto}
+.icard{background:var(--cartao);border:1px solid var(--linha);border-radius:12px;padding:6px;color:var(--texto);font:inherit;display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px}
+.icard img{width:46px;height:46px;object-fit:contain}.icard .em{font-size:32px}.icard b{font-size:11px;line-height:1.15}.icard small{font-size:9px;color:var(--fraco)}
+.icard.on{border-color:#ff8aff;box-shadow:0 0 0 1px #ff8aff inset;background:#2a1838}
+#a-ite .bt{width:100%}
