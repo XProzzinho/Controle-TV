@@ -1,7 +1,7 @@
 // Aba Itens: o Administrador escolhe qualquer item do jogo e dá pros jogadores selecionados.
 // Grava em presentes/{uid}; no jogo, chega na Caixa de Mensagens do jogador e ele toca em Resgatar.
 (function () {
-  const CATS = [['arma', '⚔️ Armas'], ['fant', '🧥 Conjuntos'], ['sob', '🛡️ Peças'], ['cosm', '🪽 Asas'], ['mont', '🐾 Montarias'], ['pet', '🐉 Pets'], ['crist', '💎 Cristais'], ['item', '🍖 Itens'], ['moedas', '💰 Moedas'], ['xp', '⭐ XP'], ['titulo', '🏷️ Títulos']];
+  const CATS = [['arma', '⚔️ Armas'], ['fant', '🧥 Conjuntos'], ['sob', '🛡️ Peças'], ['cosm', '🪽 Asas'], ['mont', '🐾 Montarias'], ['pet', '🐉 Pets'], ['divino', '✦ Divinos'], ['crist', '💎 Cristais'], ['item', '🍖 Itens'], ['moedas', '💰 Moedas'], ['xp', '⭐ XP'], ['titulo', '🏷️ Títulos']];
   let cat = 'arma', sel = null, soEquipe = false, STAFF = null;
   async function carregaEquipe() { if (STAFF) return; STAFF = {}; try { const q = await firebase.firestore().collection('staff').get(); q.forEach(d => { STAFF[d.id] = d.data().cargo || 'gm'; }); } catch (e) { toast('Não deu pra ler a equipe: ' + (e.code || e.message), '#ef4444'); } }
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
