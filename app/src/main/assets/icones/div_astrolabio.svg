@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><radialGradient id="g"><stop offset="0" stop-color="#00d2ff" stop-opacity=".8"/><stop offset="1" stop-color="#0a2880" stop-opacity="0"/></radialGradient></defs><rect width="64" height="64" rx="12" fill="#050811"/><circle cx="32" cy="32" r="30" fill="url(#g)"/>
+<ellipse cx="32" cy="32" rx="28" ry="9" fill="none" stroke="#d4af37" stroke-width="2" transform="rotate(25 32 32)"/><ellipse cx="32" cy="32" rx="28" ry="9" fill="none" stroke="#d4af37" stroke-width="2" transform="rotate(-25 32 32)"/>
+<circle cx="32" cy="32" r="21" fill="none" stroke="#f4c44e" stroke-width="3"/><circle cx="32" cy="32" r="16" fill="none" stroke="#38bdf8" stroke-width="5" stroke-dasharray="3 2"/>
+<g fill="#f4c44e" stroke="#7a5a10" stroke-width="1"><path d="M32 4l4 8-4 4-4-4z"/><path d="M32 60l4-8-4-4-4 4z"/><path d="M4 32l8-4 4 4-4 4z"/><path d="M60 32l-8-4-4 4 4 4z"/></g>
+<path d="M32 18 Q34 30 46 32 Q34 34 32 46 Q30 34 18 32 Q30 30 32 18z" fill="#f4c44e" stroke="#7a5a10" stroke-width="1"/><path d="M32 26l5 6-5 6-5-6z" fill="#80e5ff" stroke="#fff" stroke-width="1"/></svg>
