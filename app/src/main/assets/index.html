@@ -31,6 +31,7 @@
     <button data-a="buf"><i>⚡</i><b>Buffs</b><small>Aplicar poderes</small></button>
     <button data-a="per"><i>🛡️</i><b>Permissões</b><small>GM e ADM</small></button>
     <button data-a="his"><i>📜</i><b>Histórico</b><small>Registro de ações</small></button>
+    <button data-a="nac" id="ab-nac" class="largo"><i>⚔️</i><b>Batalha de Nação</b><small>Iniciar ou encerrar · 🔴 Carmesim x 🔵 Safira</small></button>
     <button data-a="ite" class="largo"><i>🎁</i><b>Itens</b><small>Dar armas, roupas, montarias, moedas...</small></button>
   </nav>
 
@@ -97,6 +98,16 @@
     <button id="i-dar" class="bt pri">📩 Enviar por mensagem</button>
   </div>
 
+  <div id="a-nac" class="aba" hidden>
+    <div id="n-status" class="nst"></div>
+    <p class="resumo">Automático todo dia às <b>12h</b> e às <b>20h</b> (Brasília), por 20 minutos. Aqui você inicia uma batalha extra agora ou encerra a que estiver rolando.</p>
+    <h4 class="passo">Duração da batalha extra</h4>
+    <div class="chips" id="n-dur"><button data-m="10">10 min</button><button data-m="20" class="on">20 min</button><button data-m="30">30 min</button><button data-m="60">1 hora</button></div>
+    <button id="n-ini" class="bt pri">🟢 Iniciar Batalha de Nação agora</button>
+    <button id="n-fim" class="bt">🛑 Encerrar batalha agora</button>
+    <p id="n-info" class="resumo"></p>
+  </div>
+
   <div id="barra-sel"><span id="bs-txt">Nenhum selecionado</span><button id="bs-ir" class="bt pri mini">Aplicar buff ›</button></div>
 </section>
 
@@ -113,5 +124,6 @@
 <script src="js/itens.js"></script>
 <script src="js/jogadores.js"></script>
 <script src="js/admin.js"></script>
+<script src="js/nacao.js"></script>
 </body>
 </html>

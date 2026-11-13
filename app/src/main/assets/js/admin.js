@@ -34,8 +34,8 @@ auth.onAuthStateChanged(async u => {
 
 // ---------- abas ----------
 document.querySelectorAll('.abas button').forEach(b => b.onclick = () => abre(b.dataset.a));
-function abre(a) { document.querySelectorAll('.abas button').forEach(b => b.classList.toggle('on', b.dataset.a === a)); ['jog', 'buf', 'per', 'his', 'ite'].forEach(k => $('a-' + k).hidden = k !== a);
-  $('barra-sel').hidden = a === 'per' || a === 'his'; if (a === 'per') montaPerm(); if (a === 'his') historico(); if (a === 'buf') resumo(); if (a === 'ite') itensDesenha(); }
+function abre(a) { document.querySelectorAll('.abas button').forEach(b => b.classList.toggle('on', b.dataset.a === a)); ['jog', 'buf', 'per', 'his', 'ite', 'nac'].forEach(k => $('a-' + k).hidden = k !== a);
+  $('barra-sel').hidden = a === 'per' || a === 'his' || a === 'nac'; if (a === 'nac' && window.nacMonta) nacMonta(); if (a === 'per') montaPerm(); if (a === 'his') historico(); if (a === 'buf') resumo(); if (a === 'ite') itensDesenha(); }
 window.abre = abre;
 function barraSel() { const n = J.sel.size; $('bs-txt').textContent = n ? n + ' jogador(es) selecionado(s)' : 'Nenhum selecionado'; $('bs-ir').disabled = !n; resumo(); if (window.itensResumo) itensResumo(); }
 window.barraSel = barraSel;
