@@ -29,10 +29,16 @@ J.ficha = uid => { const p = J.todos.find(x => x.uid === uid); if (!p) return; c
   F.innerHTML = `<div class="fh"><div class="av grande" style="--c:${J.online(p) ? '#22c55e' : '#475569'}">${J.esc((p.nome || '?')[0].toUpperCase())}</div><div><h2>${J.esc(p.nome || 'Jogador')}</h2>
     <small>ID ${J.esc(p.codigo || '')} · Nv ${p.nv || 1}${p.classe ? ' · ' + J.esc(p.classe) : ''}${p.titulo ? ' · título ' + J.esc(p.titulo) : ''}</small></div></div>
     <label class="troca vooT"><input id="f-voo" type="checkbox" ${J.voo[uid] ? 'checked' : ''}> 🪽 Pode voar (com asas equipadas)</label><h3>Buffs ativos (${A.length})</h3><div class="lista">${A.length ? A.map(b => `<div class="bfl" style="--c:${BUFFS[b.tipo].cor}">${ic(b.tipo)}<div class="tx"><b>${BUFFS[b.tipo].nome} · ${b.pct}%${b.imune ? ' · imune' : ''}</b><small>Acaba: ${tempo(b.ate)} · dado por ${J.esc(b.porNome || '?')}</small></div><button class="bt mini perigo" data-id="${b.id}">Remover</button></div>`).join('') : '<p class="vazio">Sem buffs agora.</p>'}</div>
-    <div class="acoes"><button id="f-sel" class="bt">${J.sel.has(uid) ? 'Tirar da seleção' : 'Selecionar'}</button><button id="f-buff" class="bt pri">Dar buff só pra ele</button>${A.length ? '<button id="f-tudo" class="bt perigo">Remover todos</button>' : ''}</div>`;
+    <div class="acoes"><button id="f-sel" class="bt">${J.sel.has(uid) ? 'Tirar da seleção' : 'Selecionar'}</button><button id="f-buff" class="bt pri">Dar buff só pra ele</button>${A.length ? '<button id="f-tudo" class="bt perigo">Remover todos</button>' : ''}</div>
+    ${souAdm() ? `<h3>⚠️ Zona de perigo</h3><div class="perigoBox"><p>Apaga todo o progresso da conta: nível, XP, itens, moedas, habilidades, nação e personagem. A pessoa recomeça do zero (o login continua o mesmo). Não dá pra desfazer.</p><button id="f-reset" class="bt perigo">♻️ Resetar conta</button></div>` : ''}`;
   F.querySelectorAll('[data-id]').forEach(b => b.onclick = async () => { await removeBuffs([uid], b.dataset.id); J.ficha(uid); });
   $('f-voo').onchange = e => vooMuda(uid, e.target.checked);
   $('f-sel').onclick = () => { J.alterna(uid); J.ficha(uid); };
   $('f-buff').onclick = () => { J.sel = new Set([uid]); fechaFicha(); J.desenha(); abre('buf'); };
   if ($('f-tudo')) $('f-tudo').onclick = async () => { await removeBuffs([uid]); J.ficha(uid); };
+  if ($('f-reset')) $('f-reset').onclick = async () => { const nome = p.nome || 'Jogador';
+    if (!confirm('Resetar a conta de ' + nome + '?\n\nTodo o progresso vai ser apagado e ele recomeça do nível 1. Não dá pra desfazer.')) return;
+    if (!confirm('Tem certeza MESMO? Última confirmação para resetar ' + nome + '.')) return;
+    try { await db.collection('resets').doc(uid).set({ em: Date.now(), por: EU.uid, porNome: EU.nome || '' }); try { await removeBuffs([uid]); } catch (e) {} try { await vooMuda(uid, false); } catch (e) {} try { log('reset', uid, {}); } catch (e) {}
+      toast('♻️ Conta de ' + nome + ' resetada. Se ele estiver jogando, recomeça na hora; se não, na próxima vez que entrar.', '#22c55e'); fechaFicha(); } catch (e) { toast('Erro: ' + (e.code || e.message) + (e.code === 'permission-denied' ? ' (atualize as regras do Firebase)' : ''), '#ef4444'); } };
   $('ficha').hidden = false; };
