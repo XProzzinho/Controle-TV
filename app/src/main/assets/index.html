@@ -33,6 +33,7 @@
     <button data-a="his"><i>📜</i><b>Histórico</b><small>Registro de ações</small></button>
     <button data-a="nac" id="ab-nac" class="largo"><i>⚔️</i><b>Batalha de Nação</b><small>Iniciar ou encerrar · 🔴 Carmesim x 🔵 Safira</small></button>
     <button data-a="ite" class="largo"><i>🎁</i><b>Itens</b><small>Dar armas, roupas, montarias, moedas...</small></button>
+    <button data-a="rnk" class="largo"><i>🏆</i><b>Ranking de Poder</b><small>Top 10 e estátuas do pódio · atualizar agora</small></button>
   </nav>
 
   <div id="a-jog" class="aba">
@@ -117,6 +118,14 @@
     <p id="n-info" class="resumo"></p>
   </div>
 
+  <div id="a-rnk" class="aba" hidden>
+    <div id="r-status" class="nst off"></div>
+    <p class="resumo">O ranking e as estátuas do pódio na Praça dos Campeões viram sozinhos <b>todo dia à meia-noite</b>. Aqui você força a atualização agora: quem estiver online manda o poder e o visual (roupa, arma, divino) na hora, e o pódio troca.</p>
+    <button id="r-atual" class="bt pri">🔄 Atualizar ranking e pódio agora</button>
+    <h4 class="passo">Top 10 atual</h4>
+    <div id="r-lista" class="resumo">Carregando...</div>
+  </div>
+
   <div id="barra-sel"><span id="bs-txt">Nenhum selecionado</span><button id="bs-ir" class="bt pri mini">Aplicar buff ›</button></div>
 </section>
 
@@ -134,5 +143,6 @@
 <script src="js/jogadores.js"></script>
 <script src="js/admin.js"></script>
 <script src="js/nacao.js"></script>
+<script src="js/ranking.js"></script>
 </body>
 </html>
