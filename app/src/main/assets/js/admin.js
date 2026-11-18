@@ -4,7 +4,7 @@ const DONO = 'geansdp2@gmail.com';
 firebase.initializeApp(window.FIREBASE_CONFIG);
 try { localStorage.setItem('ultimo-email', localStorage.getItem('ultimo-email') || ''); } catch (e) {}
 const auth = firebase.auth(), db = firebase.firestore();
-let EU = null, CFG = { maxMin: 1440, maxPct: 50, perm: false }, bTipo = 'forca', bDur = 30;
+let EU = null, CFG = { maxMin: 1440, maxPct: 50, perm: false }, bTipo = 'gm1', bDur = 30;
 
 function toast(t, cor) { const e = $('toast'); e.textContent = t; e.style.borderColor = cor || '#22d3ee'; e.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove('on'), 2800); }
 function msg(id, t, erro) { const e = $(id); e.textContent = t || ''; e.className = 'msg' + (erro ? ' erro' : ''); }
@@ -53,9 +53,9 @@ $('j-sel-nada').onclick = () => { J.sel.clear(); J.desenha(); };
 
 // ---------- buffs ----------
 function montaBuffs() { const G = $('b-grade'); G.innerHTML = '';
-  Object.keys(BUFFS).forEach(k => { const B = BUFFS[k]; const d = document.createElement('button'); d.className = 'bcard' + (k === bTipo ? ' on' : ''); d.style.setProperty('--c', B.cor);
-    d.innerHTML = `${ic(k)}<b>${B.nome}</b><small>${B.desc}</small>`; d.onclick = () => { bTipo = k; montaBuffs(); }; G.appendChild(d); });
-  $('b-imune-l').hidden = bTipo !== 'divino';
+  NIVEIS_GM.forEach(k => { const B = BUFFS[k], bloq = !souAdm() && B.pct > CFG.maxPct; const d = document.createElement('button'); d.className = 'bcard' + (k === bTipo ? ' on' : ''); d.disabled = bloq; d.style.setProperty('--c', B.cor);
+    d.innerHTML = `${ic(k)}<b>${B.nome}</b><small>${bloq ? '🔒 Acima do limite do GM' : B.desc}</small>`; d.onclick = () => { bTipo = k; montaBuffs(); }; G.appendChild(d); });
+  $('b-imune-l').hidden = true; $('b-pct').hidden = true; $('b-pct-v').parentNode.hidden = true; $('b-pct').value = BUFFS[bTipo].pct;
   const maxP = souAdm() ? 100 : CFG.maxPct; $('b-pct').max = maxP; if (+$('b-pct').value > maxP) $('b-pct').value = maxP; $('b-pct-v').textContent = $('b-pct').value + '%';
   const D = $('b-dur'); D.innerHTML = ''; DURACOES.forEach(([t, m]) => { const bloq = !souAdm() && (m === 0 ? !CFG.perm : m > CFG.maxMin); const b = document.createElement('button'); b.textContent = t; b.disabled = bloq; b.className = m === bDur ? 'on' : ''; b.onclick = () => { bDur = m; montaBuffs(); }; D.appendChild(b); });
   $('b-min-l').hidden = bDur !== -1;
@@ -64,17 +64,17 @@ function montaBuffs() { const G = $('b-grade'); G.innerHTML = '';
 $('b-pct').oninput = () => { $('b-pct-v').textContent = $('b-pct').value + '%'; resumo(); };
 $('b-min').oninput = resumo;
 function minutos() { return bDur === -1 ? Math.max(1, Math.round(+$('b-min').value || 0)) : bDur; }
-function resumo() { const n = J.sel.size, B = BUFFS[bTipo]; $('b-resumo').innerHTML = n ? `${ic(bTipo)} <b>${B.nome}</b> ${$('b-pct').value}% · ${durTxt(minutos())} → <b>${n}</b> jogador(es): ${[...J.sel].slice(0, 4).map(J.nome).map(J.esc).join(', ')}${n > 4 ? '…' : ''}` : 'Selecione jogadores na aba <b>Jogadores</b>.'; $('b-aplicar').disabled = !n; $('b-remover').disabled = !n; }
+function resumo() { const n = J.sel.size, B = BUFFS[bTipo]; $('b-resumo').innerHTML = n ? `${ic(bTipo)} <b>${B.nome}</b> (+${B.pct}% em tudo) · ${durTxt(minutos())} → <b>${n}</b> jogador(es): ${[...J.sel].slice(0, 4).map(J.nome).map(J.esc).join(', ')}${n > 4 ? '…' : ''}` : 'Selecione jogadores na aba <b>Jogadores</b>.'; $('b-aplicar').disabled = !n; $('b-remover').disabled = !n; }
 function log(acao, alvo, extra) { return db.collection('buffLog').add(Object.assign({ acao, alvo, alvoNome: J.nome(alvo), por: EU.uid, porNome: EU.nome, cargo: EU.cargo, criado: Date.now() }, extra || {})); }
-$('b-aplicar').onclick = async () => { const min = minutos(), pct = +$('b-pct').value;
+$('b-aplicar').onclick = async () => { const min = minutos(), pct = BUFFS[bTipo].pct, nivel = +bTipo.slice(2);
   if (!souAdm() && ((min === 0 && !CFG.perm) || min > CFG.maxMin || pct > CFG.maxPct)) { toast('Passa do limite do GM.', '#ef4444'); return; }
   if (bDur === -1 && !(+$('b-min').value > 0)) { toast('Digite os minutos.', '#ef4444'); return; }
-  const item = { tipo: bTipo, pct, ate: min ? Date.now() + min * 60000 : 0, imune: bTipo === 'divino' && $('b-imune').checked, por: EU.uid, porNome: EU.nome, criado: Date.now() };
+  const item = { tipo: 'gm', nivel, pct, ate: min ? Date.now() + min * 60000 : 0, imune: false, por: EU.uid, porNome: EU.nome, criado: Date.now() };
   $('b-aplicar').disabled = true; let ok = 0;
   for (const uid of J.sel) { try { const ref = db.collection('buffs').doc(uid);
       await db.runTransaction(async t => { const d = await t.get(ref); const L = ativos(d.exists ? d.data().lista : []).filter(b => b.tipo !== item.tipo); L.push(Object.assign({ id: Math.random().toString(36).slice(2, 10) }, item)); t.set(ref, { lista: L, nome: J.nome(uid), mudou: Date.now() }, { merge: true }); });
-      J.buffs[uid] = (J.buffs[uid] || []).filter(b => b.tipo !== item.tipo).concat([item]); await log('aplicar', uid, { tipo: item.tipo, pct, min }); ok++; } catch (e) { toast('Erro em ' + J.nome(uid) + ': ' + (e.code || e.message), '#ef4444'); } }
-  if (ok) toast(BUFFS[item.tipo].nome + ' aplicado em ' + ok + ' jogador(es)!', BUFFS[item.tipo].cor); J.carrega(); resumo(); };
+      J.buffs[uid] = (J.buffs[uid] || []).filter(b => b.tipo !== item.tipo).concat([item]); await log('aplicar', uid, { tipo: item.tipo, nivel, pct, min }); ok++; } catch (e) { toast('Erro em ' + J.nome(uid) + ': ' + (e.code || e.message), '#ef4444'); } }
+  if (ok) toast(binfo(item).nome + ' aplicado em ' + ok + ' jogador(es)!', binfo(item).cor); J.carrega(); resumo(); };
 async function removeBuffs(uids, id) { let ok = 0;
   for (const uid of uids) { try { const ref = db.collection('buffs').doc(uid); let tirou = null;
       await db.runTransaction(async t => { const d = await t.get(ref); const L0 = ativos(d.exists ? d.data().lista : []); tirou = id ? L0.find(b => b.id === id) : null; const L = id ? L0.filter(b => b.id !== id) : []; t.set(ref, { lista: L, nome: J.nome(uid), mudou: Date.now() }, { merge: true }); });
@@ -105,8 +105,8 @@ $('c-salva').onclick = async () => { CFG = { maxMin: Math.max(5, +$('c-min').val
 const ACAO = { item: 'deu', 'voo-libera': 'liberou o voo de', 'voo-bloqueia': 'bloqueou o voo de', aplicar: 'aplicou', remover: 'removeu', limpar: 'removeu todos os buffs de', 'equipe-entra': 'colocou na equipe', 'equipe-sai': 'tirou da equipe' };
 async function historico() { const L = $('h-lista'); L.innerHTML = '<p class="vazio">Carregando...</p>';
   try { const s = await db.collection('buffLog').orderBy('criado', 'desc').limit(100).get(); L.innerHTML = s.empty ? '<p class="vazio">Nada registrado ainda.</p>' : '';
-    s.forEach(d => { const x = d.data(), B = BUFFS[x.tipo]; const e = document.createElement('div'); e.className = 'hist'; const q = new Date(x.criado);
-      e.innerHTML = `${B ? ic(x.tipo) : '<span class="ico">🛡️</span>'}<div class="tx"><b>${J.esc(x.porNome)} <em>(${(x.cargo || '').toUpperCase()})</em> ${ACAO[x.acao] || x.acao} ${x.acao === 'item' ? '<i style="color:#ff8aff">' + J.esc(x.itemNome || '') + '</i> pra ' : ''}${B && x.acao !== 'limpar' ? '<i style="color:' + B.cor + '">' + B.nome + '</i> ' + (x.acao === 'aplicar' ? (x.pct + '% · ' + durTxt(x.min)) + ' em ' : 'de ') : x.cargo && x.acao.startsWith('equipe') ? '' : ''}${J.esc(x.alvoNome || '')}</b><small>${q.toLocaleDateString('pt-BR')} ${q.toLocaleTimeString('pt-BR').slice(0, 5)}</small></div>`; L.appendChild(e); });
+    s.forEach(d => { const x = d.data(), B = x.tipo ? binfo(x) : null; const e = document.createElement('div'); e.className = 'hist'; const q = new Date(x.criado);
+      e.innerHTML = `${B ? bic(x) : '<span class="ico">🛡️</span>'}<div class="tx"><b>${J.esc(x.porNome)} <em>(${(x.cargo || '').toUpperCase()})</em> ${ACAO[x.acao] || x.acao} ${x.acao === 'item' ? '<i style="color:#ff8aff">' + J.esc(x.itemNome || '') + '</i> pra ' : ''}${B && x.acao !== 'limpar' ? '<i style="color:' + B.cor + '">' + B.nome + '</i> ' + (x.acao === 'aplicar' ? (x.pct + '% · ' + durTxt(x.min)) + ' em ' : 'de ') : x.cargo && x.acao.startsWith('equipe') ? '' : ''}${J.esc(x.alvoNome || '')}</b><small>${q.toLocaleDateString('pt-BR')} ${q.toLocaleTimeString('pt-BR').slice(0, 5)}</small></div>`; L.appendChild(e); });
   } catch (e) { L.innerHTML = '<p class="vazio">Erro: ' + (e.code || e.message) + '</p>'; } }
 $('h-atualiza').onclick = historico;
 setInterval(() => { if (EU && !$('a-jog').hidden && $('ficha').hidden) J.desenha(); }, 30000);
